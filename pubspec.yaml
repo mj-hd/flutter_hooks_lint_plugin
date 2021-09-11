@@ -1,0 +1,11 @@
+name: flutter_hooks_lint_plugin
+description: Useful lints for flutter hooks
+version: 1.0.0
+
+environment:
+  sdk: '>=2.12.0 <3.0.0'
+
+dependencies:
+  analyzer: 2.2.0
+  analyzer_plugin: 0.7.0
+

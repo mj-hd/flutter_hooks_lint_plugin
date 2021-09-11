@@ -1,0 +1,11 @@
+name: flutter_hooks_lint_plugin_loader
+description: bootstrap package of flutter_hooks_lint_plugin
+version: 1.0.0
+
+environment:
+  sdk: '>=2.12.0 <3.0.0'
+
+dependencies:
+  flutter_hooks_lint_plugin:
+    path: /Users/s01052/Projects/flutter_hooks_lint_plugin
+

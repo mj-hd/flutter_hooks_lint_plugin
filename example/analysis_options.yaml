@@ -1,0 +1,5 @@
+analyzer:
+  plugins:
+    - flutter_hooks_lint_plugin
+
+flutter_hooks_lint_plugin:
