@@ -11,6 +11,8 @@ class ExhaustiveDepsVisitor<R> extends GeneralizingAstVisitor<R> {
 
   @override
   R? visitMethodInvocation(MethodInvocation node) {
+    // TODO(mj-hd): useMemo
+    // TODO(mj-hd): useCallback
     if (node.methodName.name == 'useEffect') {
       final actualDeps = [];
       final expectedDeps = [];
@@ -37,6 +39,7 @@ class ExhaustiveDepsVisitor<R> extends GeneralizingAstVisitor<R> {
 
         final visitor = _DepsIdentifierVisitor();
 
+        // TODO(mj-hd): exclude references that will not be changed
         final body = arguments[0];
         body.visitChildren(visitor);
 
@@ -44,6 +47,7 @@ class ExhaustiveDepsVisitor<R> extends GeneralizingAstVisitor<R> {
 
         final missingDeps = [];
 
+        // TODO(mj-hd): find unnecessary deps
         for (final dep in expectedDeps) {
           if (!actualDeps.contains(dep)) {
             missingDeps.add(dep);
@@ -72,6 +76,7 @@ class _DepsIdentifierVisitor<R> extends GeneralizingAstVisitor<R> {
   @override
   R? visitIdentifier(Identifier node) {
     _idents.add(node.name);
+    // NOTE: node.staticType represents the runtime type statically resolved
     return super.visitIdentifier(node);
   }
 
