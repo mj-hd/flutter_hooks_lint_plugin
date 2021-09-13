@@ -9,9 +9,9 @@ import 'package:analyzer/src/dart/analysis/driver.dart';
 import 'package:analyzer_plugin/plugin/plugin.dart';
 import 'package:analyzer/src/dart/analysis/driver_based_analysis_context.dart';
 import 'package:analyzer_plugin/protocol/protocol_generated.dart' as plugin;
-import 'package:analyzer_plugin/protocol/protocol_common.dart' as plugin;
 import 'package:flutter_hooks_lint_plugin/src/plugin/exhaustive_deps.dart';
 import 'package:flutter_hooks_lint_plugin/src/plugin/rules_of_hooks.dart';
+import 'package:flutter_hooks_lint_plugin/src/plugin/utils.dart';
 
 class FlutterHooksRulesPlugin extends ServerPlugin {
   FlutterHooksRulesPlugin(ResourceProvider? provider) : super(provider);
@@ -124,40 +124,20 @@ class FlutterHooksRulesPlugin extends ServerPlugin {
   ) {
     final errors = <plugin.AnalysisErrorFixes>[];
 
+    void report(LintError err) {
+      errors.add(
+        plugin.AnalysisErrorFixes(
+          err.toAnalysisError(filePath, unit),
+        ),
+      );
+    }
+
     final visitors = [
       ExhaustiveDepsVisitor(
-        file: filePath,
-        unit: unit,
-        onReport: (message, code, location) {
-          errors.add(
-            plugin.AnalysisErrorFixes(
-              plugin.AnalysisError(
-                plugin.AnalysisErrorSeverity.INFO,
-                plugin.AnalysisErrorType.LINT,
-                location,
-                message,
-                code,
-              ),
-            ),
-          );
-        },
+        onReport: report,
       ),
       RulesOfHooksVisitor(
-        file: filePath,
-        unit: unit,
-        onReport: (message, code, location) {
-          errors.add(
-            plugin.AnalysisErrorFixes(
-              plugin.AnalysisError(
-                plugin.AnalysisErrorSeverity.INFO,
-                plugin.AnalysisErrorType.LINT,
-                location,
-                message,
-                code,
-              ),
-            ),
-          );
-        },
+        onReport: report,
       )
     ];
 

@@ -1,26 +1,16 @@
 import 'package:analyzer/dart/ast/ast.dart';
 import 'package:analyzer/dart/ast/visitor.dart';
-import 'package:analyzer_plugin/protocol/protocol_common.dart' as plugin;
+import 'package:flutter_hooks_lint_plugin/src/plugin/utils.dart';
 
 class ExhaustiveDepsVisitor<R> extends GeneralizingAstVisitor<R> {
   ExhaustiveDepsVisitor({
-    required this.file,
-    required this.unit,
     required this.onReport,
   });
 
-  final String file;
-  final CompilationUnit unit;
-  final Function(String, String, plugin.Location) onReport;
+  final Function(LintError) onReport;
 
   @override
   R? visitMethodInvocation(MethodInvocation node) {
-    final lineInfo = unit.lineInfo!;
-    final begin = node.beginToken.charOffset;
-    final end = node.endToken.charEnd;
-    final loc = lineInfo.getLocation(begin);
-    final locEnd = lineInfo.getLocation(end);
-
     if (node.methodName.name == 'useEffect') {
       final actualDeps = [];
       final expectedDeps = [];
@@ -62,16 +52,10 @@ class ExhaustiveDepsVisitor<R> extends GeneralizingAstVisitor<R> {
 
         if (missingDeps.isNotEmpty) {
           onReport(
-            "missing deps '${missingDeps.join(',')}'",
-            'missing_deps',
-            plugin.Location(
-              file,
-              node.beginToken.charOffset,
-              node.length,
-              loc.lineNumber,
-              loc.columnNumber,
-              endLine: locEnd.lineNumber,
-              endColumn: locEnd.columnNumber,
+            LintError(
+              message: "missing deps '${missingDeps.join(',')}'",
+              code: 'missing_deps',
+              node: node,
             ),
           );
         }
