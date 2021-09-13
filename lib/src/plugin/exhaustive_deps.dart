@@ -67,7 +67,7 @@ class ExhaustiveDepsVisitor<R> extends GeneralizingAstVisitor<R> {
             plugin.Location(
               file,
               node.beginToken.charOffset,
-              node.endToken.end,
+              node.length,
               loc.lineNumber,
               loc.columnNumber,
               endLine: locEnd.lineNumber,
