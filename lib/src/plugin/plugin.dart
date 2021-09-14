@@ -132,8 +132,11 @@ class FlutterHooksRulesPlugin extends ServerPlugin {
       );
     }
 
+    final exhaustiveDepsContext = ExhaustiveDepsContext();
+
     final visitors = [
-      ExhaustiveDepsVisitor(
+      ExhaustiveDepsHookWidgetVisitor(
+        context: exhaustiveDepsContext,
         onReport: report,
       ),
       RulesOfHooksVisitor(
