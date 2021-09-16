@@ -132,21 +132,20 @@ class FlutterHooksRulesPlugin extends ServerPlugin {
       );
     }
 
-    final exhaustiveDepsContext = ExhaustiveDepsContext();
+    findExhaustiveDeps(
+      unit,
+      onMissingDepsReport: (deps, node) {
+        report(LintError.missingDeps(deps, node));
+      },
+      onUnnecessaryDepsReport: (deps, node) {
+        report(LintError.unnecessaryDeps(deps, node));
+      },
+    );
 
-    final visitors = [
-      ExhaustiveDepsHookWidgetVisitor(
-        context: exhaustiveDepsContext,
-        onReport: report,
-      ),
-      RulesOfHooksVisitor(
-        onReport: report,
-      )
-    ];
-
-    for (final visitor in visitors) {
-      unit.visitChildren(visitor);
-    }
+    findRulesOfHooks(
+      unit,
+      onReport: () {},
+    );
 
     return errors;
   }

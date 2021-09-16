@@ -8,6 +8,22 @@ class LintError {
     required this.node,
   });
 
+  factory LintError.missingDeps(List<Identifier> deps, AstNode node) {
+    return LintError(
+      message: "missing deps '${deps.join(',')}'",
+      code: 'missing_deps',
+      node: node,
+    );
+  }
+
+  factory LintError.unnecessaryDeps(List<Identifier> deps, AstNode node) {
+    return LintError(
+      message: "unnecessary deps '${deps.join(',')}'",
+      code: 'unnecessary_deps',
+      node: node,
+    );
+  }
+
   final String message;
   final String code;
   final AstNode node;

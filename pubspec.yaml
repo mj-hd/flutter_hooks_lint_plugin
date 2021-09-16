@@ -9,3 +9,6 @@ dependencies:
   analyzer: 2.2.0
   analyzer_plugin: 0.7.0
 
+dev_dependencies:
+  test: 1.17.12
+  tuple: 2.0.0
