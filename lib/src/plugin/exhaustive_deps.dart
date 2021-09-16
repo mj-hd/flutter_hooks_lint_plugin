@@ -13,10 +13,13 @@ class ExhaustiveDepsHookWidgetVisitor<R> extends GeneralizingAstVisitor<R> {
 
   @override
   R? visitClassDeclaration(ClassDeclaration node) {
-    if (node.extendsClause?.superclass.name.name == 'HookWidget') {
-      final buildVisitor = _BuildVisitor(context: context, onReport: onReport);
+    switch (node.extendsClause?.superclass.name.name) {
+      case 'HookWidget':
+      case 'HookConsumerWidget':
+        final buildVisitor =
+            _BuildVisitor(context: context, onReport: onReport);
 
-      node.visitChildren(buildVisitor);
+        node.visitChildren(buildVisitor);
     }
 
     return super.visitClassDeclaration(node);
@@ -211,6 +214,9 @@ class _DepsIdentifierVisitor<R> extends GeneralizingAstVisitor<R> {
   @override
   R? visitIdentifier(Identifier node) {
     if (node.staticElement == null) return super.visitIdentifier(node);
+
+    // ignore imported identifiers
+    if (node.staticElement!.library != null) return super.visitIdentifier(node);
 
     if (!context.shouldIgnore(node)) {
       _idents.add(node);
