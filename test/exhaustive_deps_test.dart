@@ -34,6 +34,8 @@ Future<List<Identifier>?> _findUnnecessaryDeps(String source) async {
 }
 
 void main() {
+  setUpLogging();
+
   group('exhaustive deps', () {
     test('report class property reference', () async {
       final source = '''

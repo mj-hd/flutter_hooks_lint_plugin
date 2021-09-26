@@ -1,19 +1,17 @@
 import 'package:analyzer/dart/ast/ast.dart';
 import 'package:analyzer/dart/ast/visitor.dart';
-import 'package:analyzer/dart/element/element.dart';
+import 'package:logging/logging.dart';
+
+final log = Logger('exhaustive_deps');
 
 void findExhaustiveDeps(
   CompilationUnit unit, {
   required Function(List<Identifier>, AstNode) onMissingDepsReport,
   required Function(List<Identifier>, AstNode) onUnnecessaryDepsReport,
 }) {
-  final context = _Context();
+  log.finer('findExhaustiveDeps');
 
-  unit.visitChildren(
-    _TopLevelDeclarationVisitor(
-      context: context,
-    ),
-  );
+  final context = _Context();
 
   unit.visitChildren(
     _HookWidgetVisitor(
@@ -30,52 +28,57 @@ extension on Identifier {
 
     return staticElement?.id == other.staticElement?.id;
   }
+
+  bool equalsByName(Identifier other) {
+    return name == other.name;
+  }
+}
+
+extension on AstNode {
+  T? findChild<T extends AstNode>() {
+    final nodes = childEntities.whereType<T>();
+
+    if (nodes.isEmpty) return null;
+
+    return nodes.first;
+  }
 }
 
 class _Context {
-  final List<Identifier> _constants = [];
+  final List<Identifier> _localVariables = [];
+  final List<Identifier> _classFields = [];
 
-  String? _currentLibraryIdentifier;
+  void addLocalVariable(Identifier ident) {
+    log.finer('_Context: addLocalVariable($ident)');
 
-  void ignore(Identifier node) {
-    _constants.add(node);
+    _localVariables.add(ident);
   }
 
-  bool shouldIgnore(Identifier node) {
-    return _constants.any(node.equalsByStaticElement);
+  void addClassField(Identifier ident) {
+    log.finer('_Context: addClassVariable($ident)');
+
+    _classFields.add(ident);
   }
 
-  void setCurrentLibrary(LibraryElement? lib) {
-    if (lib == null) return;
+  bool isVarialbe(Identifier ident) {
+    log.finer('_Context: isVariable($ident)');
 
-    _currentLibraryIdentifier = lib.identifier;
-  }
-
-  bool shouldIgnoreLibrary(LibraryElement? lib) {
-    if (_currentLibraryIdentifier == null) return false;
-
-    return _currentLibraryIdentifier != lib?.identifier;
-  }
-}
-
-class _TopLevelDeclarationVisitor<R> extends GeneralizingAstVisitor<R> {
-  _TopLevelDeclarationVisitor({
-    required this.context,
-  });
-
-  final _Context context;
-
-  @override
-  R? visitTopLevelVariableDeclaration(TopLevelVariableDeclaration node) {
-    for (final variable in node.variables.variables) {
-      if (variable.isConst || variable.isFinal) {
-        context.ignore(variable.name);
-      }
+    if (_localVariables.any(ident.equalsByStaticElement)) {
+      log.finest('_Context: isVariable($ident) => local variable');
+      return true;
     }
+
+    if (_classFields.any(ident.equalsByName)) {
+      log.finest('_Context: isVariable($ident) => class field');
+      return true;
+    }
+
+    log.finest('_Context: isVariable($ident) => not variable');
+    return false;
   }
 }
 
-class _HookWidgetVisitor<R> extends GeneralizingAstVisitor<R> {
+class _HookWidgetVisitor extends SimpleAstVisitor<void> {
   _HookWidgetVisitor({
     required this.context,
     required this.onMissingDepsReport,
@@ -87,11 +90,17 @@ class _HookWidgetVisitor<R> extends GeneralizingAstVisitor<R> {
   final Function(List<Identifier>, AstNode) onUnnecessaryDepsReport;
 
   @override
-  R? visitClassDeclaration(ClassDeclaration node) {
+  void visitClassDeclaration(ClassDeclaration node) {
+    log.finer('_HookWidgetVisitor: visit($node)');
+
     switch (node.extendsClause?.superclass.name.name) {
       case 'HookWidget':
       case 'HookConsumerWidget':
-        context.setCurrentLibrary(node.name.staticElement?.library);
+        final fieldDeclarationVisitor = _FieldDeclarationVisitor(
+          context: context,
+        );
+
+        node.visitChildren(fieldDeclarationVisitor);
 
         final buildVisitor = _BuildVisitor(
           context: context,
@@ -101,12 +110,33 @@ class _HookWidgetVisitor<R> extends GeneralizingAstVisitor<R> {
 
         node.visitChildren(buildVisitor);
     }
-
-    return super.visitClassDeclaration(node);
   }
 }
 
-class _BuildVisitor<R> extends GeneralizingAstVisitor<R> {
+class _FieldDeclarationVisitor extends SimpleAstVisitor<void> {
+  _FieldDeclarationVisitor({
+    required this.context,
+  });
+
+  final _Context context;
+
+  @override
+  void visitFieldDeclaration(FieldDeclaration node) {
+    if (node.isStatic) return;
+
+    log.finer('_FieldDeclarationVisitor: visit($node)');
+
+    for (final decl in node.fields.variables) {
+      log.finest('_FieldDeclarationVisitor: check $decl');
+
+      if (decl.isConst) continue;
+
+      context.addClassField(decl.name);
+    }
+  }
+}
+
+class _BuildVisitor extends SimpleAstVisitor<void> {
   _BuildVisitor({
     required this.context,
     required this.onMissingDepsReport,
@@ -118,16 +148,19 @@ class _BuildVisitor<R> extends GeneralizingAstVisitor<R> {
   final Function(List<Identifier>, AstNode) onUnnecessaryDepsReport;
 
   @override
-  R? visitMethodDeclaration(MethodDeclaration node) {
-    if (node.name.name != 'build') return super.visitMethodDeclaration(node);
+  void visitMethodDeclaration(MethodDeclaration node) {
+    if (node.name.name != 'build') return;
 
-    final constDeclarationVisitor = _ConstDeclarationVisitor(context: context);
+    log.finer('_BuildVisitor: visit($node)');
 
-    node.visitChildren(constDeclarationVisitor);
+    final block = node.findChild<BlockFunctionBody>()?.findChild<Block>();
 
-    final useStateVisitor = _UseStateVisitor(context: context);
+    if (block == null) return;
 
-    node.visitChildren(useStateVisitor);
+    final variableDeclarationVisitor =
+        _VariableDeclarationVisitor(context: context);
+
+    block.visitChildren(variableDeclarationVisitor);
 
     final useEffectVisitor = _UseEffectVisitor(
       context: context,
@@ -135,55 +168,41 @@ class _BuildVisitor<R> extends GeneralizingAstVisitor<R> {
       onUnnecessaryDepsReport: onUnnecessaryDepsReport,
     );
 
-    node.visitChildren(useEffectVisitor);
-
-    return super.visitMethodDeclaration(node);
+    block.visitChildren(useEffectVisitor);
   }
 }
 
-class _UseStateVisitor<R> extends GeneralizingAstVisitor<R> {
-  _UseStateVisitor({
+class _VariableDeclarationVisitor extends SimpleAstVisitor<void> {
+  _VariableDeclarationVisitor({
     required this.context,
   });
 
   final _Context context;
 
   @override
-  R? visitVariableDeclaration(VariableDeclaration node) {
-    final initializer = node.initializer;
+  void visitVariableDeclarationStatement(VariableDeclarationStatement node) {
+    log.finer('_VariableDeclarationVisitor: visit($node)');
+
+    final decl = node
+        .findChild<VariableDeclarationList>()
+        ?.findChild<VariableDeclaration>();
+
+    if (decl == null) return;
+    if (decl.isConst) return;
+
+    final initializer = decl.initializer;
 
     if (initializer is MethodInvocation &&
-        initializer.methodName.name == 'useState') {
-      context.ignore(node.name);
-    }
+        initializer.methodName.name == 'useState') return;
 
     if (initializer is MethodInvocation &&
-        initializer.methodName.name == 'useRef') {
-      context.ignore(node.name);
-    }
+        initializer.methodName.name == 'useRef') return;
 
-    return super.visitVariableDeclaration(node);
+    context.addLocalVariable(decl.name);
   }
 }
 
-class _ConstDeclarationVisitor<R> extends GeneralizingAstVisitor<R> {
-  _ConstDeclarationVisitor({
-    required this.context,
-  });
-
-  final _Context context;
-
-  @override
-  R? visitVariableDeclaration(VariableDeclaration node) {
-    if (node.isConst) {
-      context.ignore(node.name);
-    }
-
-    return super.visitVariableDeclaration(node);
-  }
-}
-
-class _UseEffectVisitor<R> extends GeneralizingAstVisitor<R> {
+class _UseEffectVisitor extends SimpleAstVisitor<void> {
   _UseEffectVisitor({
     required this.context,
     required this.onMissingDepsReport,
@@ -195,23 +214,34 @@ class _UseEffectVisitor<R> extends GeneralizingAstVisitor<R> {
   final Function(List<Identifier>, AstNode) onUnnecessaryDepsReport;
 
   @override
-  R? visitMethodInvocation(MethodInvocation node) {
-    if (node.methodName.name == 'useEffect') {
+  void visitExpressionStatement(ExpressionStatement node) {
+    log.finer('_UseEffectVisitor: visit($node)');
+
+    final inv = node.findChild<MethodInvocation>();
+
+    if (inv == null) return;
+
+    if (inv.methodName.name == 'useEffect') {
+      log.finest('_UseEffectVisitor: useEffect found');
+
       final actualDeps = <Identifier>[];
       final expectedDeps = <Identifier>[];
 
-      final arguments = node.argumentList.arguments;
+      final arguments = inv.argumentList.arguments;
 
       if (arguments.isNotEmpty) {
-        // useEffect(() {})
-        if (arguments.length == 1) {}
+        if (arguments.length == 1) {
+          log.finest('_UseEffectVisitor: useEffect without deps');
+        }
 
-        // useEffect(() {}, deps)
         if (arguments.length == 2) {
+          log.finest('_UseEffectVisitor: useEffect with deps');
+
           final deps = arguments[1];
 
-          // useEffect(() {}, [deps])
           if (deps is ListLiteral) {
+            log.finest('_UseEffectVisitor: useEffect with list deps');
+
             final visitor = _DepsIdentifierVisitor(
               context: context,
             );
@@ -219,6 +249,8 @@ class _UseEffectVisitor<R> extends GeneralizingAstVisitor<R> {
             deps.visitChildren(visitor);
 
             actualDeps.addAll(visitor.idents);
+
+            log.finest('_UseEffectVisitor: actual deps $actualDeps');
           }
         }
 
@@ -231,6 +263,8 @@ class _UseEffectVisitor<R> extends GeneralizingAstVisitor<R> {
 
         expectedDeps.addAll(visitor.idents);
 
+        log.finest('_UseEffectVisitor: expected deps $expectedDeps');
+
         final missingDeps = <Identifier>[];
         final unnecessaryDeps = <Identifier>[];
 
@@ -240,33 +274,35 @@ class _UseEffectVisitor<R> extends GeneralizingAstVisitor<R> {
           }
         }
 
+        log.finest('_UseEffectVisitor: missing deps $missingDeps');
+
         for (final dep in actualDeps) {
           if (!expectedDeps.any(dep.equalsByStaticElement)) {
             unnecessaryDeps.add(dep);
           }
         }
 
+        log.finest('_UseEffectVisitor: unnecessary deps $unnecessaryDeps');
+
         if (missingDeps.isNotEmpty) {
           onMissingDepsReport(
             missingDeps,
-            node,
+            inv,
           );
         }
 
         if (unnecessaryDeps.isNotEmpty) {
           onUnnecessaryDepsReport(
             unnecessaryDeps,
-            node,
+            inv,
           );
         }
       }
     }
-
-    return super.visitMethodInvocation(node);
   }
 }
 
-class _DepsIdentifierVisitor<R> extends GeneralizingAstVisitor<R> {
+class _DepsIdentifierVisitor extends GeneralizingAstVisitor<void> {
   _DepsIdentifierVisitor({
     required this.context,
   });
@@ -276,18 +312,19 @@ class _DepsIdentifierVisitor<R> extends GeneralizingAstVisitor<R> {
   final List<Identifier> _idents = [];
 
   @override
-  R? visitIdentifier(Identifier node) {
-    if (node.staticElement == null) return super.visitIdentifier(node);
+  void visitIdentifier(Identifier node) {
+    log.finer('_DepsIdentifierVisitor: visit($node)');
 
-    if (context.shouldIgnoreLibrary(node.staticElement!.library)) {
-      return super.visitIdentifier(node);
+    if (node.staticElement == null) return;
+    if (!context.isVarialbe(node)) return;
+
+    log.finest('_DepsIdentifierVisitor: $node is variable');
+
+    if (!_idents.any(node.equalsByName)) {
+      _idents.add(node);
+    } else {
+      log.finest('_DepsIdentifierVisitor: $node is already added');
     }
-
-    if (context.shouldIgnore(node)) {
-      return super.visitIdentifier(node);
-    }
-
-    _idents.add(node);
   }
 
   List<Identifier> get idents => _idents;
