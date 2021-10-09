@@ -144,7 +144,9 @@ class FlutterHooksRulesPlugin extends ServerPlugin {
 
     findRulesOfHooks(
       unit,
-      onReport: () {},
+      onNestedHooksReport: (hookName, node) {
+        report(LintError.nestedHooks(hookName, node));
+      },
     );
 
     return errors;

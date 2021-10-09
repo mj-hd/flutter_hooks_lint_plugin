@@ -24,6 +24,14 @@ class LintError {
     );
   }
 
+  factory LintError.nestedHooks(String hookName, AstNode node) {
+    return LintError(
+      message: "avoid nested use of '$hookName'",
+      code: 'nested_hooks',
+      node: node,
+    );
+  }
+
   final String message;
   final String code;
   final AstNode node;

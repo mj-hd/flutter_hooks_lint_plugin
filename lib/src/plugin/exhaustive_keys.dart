@@ -1,23 +1,43 @@
 import 'package:analyzer/dart/ast/ast.dart';
 import 'package:analyzer/dart/ast/visitor.dart';
+import 'package:flutter_hooks_lint_plugin/src/plugin/hook_widget_visitor.dart';
 import 'package:logging/logging.dart';
 
 final log = Logger('exhaustive_keys');
 
 void findExhaustiveKeys(
   CompilationUnit unit, {
-  required Function(List<Identifier>, AstNode) onMissingKeysReport,
-  required Function(List<Identifier>, AstNode) onUnnecessaryKeysReport,
+  required void Function(List<Identifier>, AstNode) onMissingKeysReport,
+  required void Function(List<Identifier>, AstNode) onUnnecessaryKeysReport,
 }) {
   log.finer('findExhaustiveKeys');
 
   final context = _Context();
 
   unit.visitChildren(
-    _HookWidgetVisitor(
-      context: context,
-      onMissingKeysReport: onMissingKeysReport,
-      onUnnecessaryKeysReport: onUnnecessaryKeysReport,
+    HookWidgetVisitor(
+      context,
+      onClassDeclaration: (_Context context, node) {
+        final fieldDeclarationVisitor = _FieldDeclarationVisitor(
+          context: context,
+        );
+
+        node.visitChildren(fieldDeclarationVisitor);
+      },
+      onBuildBlock: (_Context context, node) {
+        final variableDeclarationVisitor =
+            _VariableDeclarationVisitor(context: context);
+
+        node.visitChildren(variableDeclarationVisitor);
+
+        final useEffectVisitor = _UseEffectVisitor(
+          context: context,
+          onMissingKeysReport: onMissingKeysReport,
+          onUnnecessaryKeysReport: onUnnecessaryKeysReport,
+        );
+
+        node.visitChildren(useEffectVisitor);
+      },
     ),
   );
 }
@@ -31,16 +51,6 @@ extension on Identifier {
 
   bool equalsByName(Identifier other) {
     return name == other.name;
-  }
-}
-
-extension on AstNode {
-  T? findChild<T extends AstNode>() {
-    final nodes = childEntities.whereType<T>();
-
-    if (nodes.isEmpty) return null;
-
-    return nodes.first;
   }
 }
 
@@ -78,41 +88,6 @@ class _Context {
   }
 }
 
-class _HookWidgetVisitor extends SimpleAstVisitor<void> {
-  _HookWidgetVisitor({
-    required this.context,
-    required this.onMissingKeysReport,
-    required this.onUnnecessaryKeysReport,
-  });
-
-  final _Context context;
-  final Function(List<Identifier>, AstNode) onMissingKeysReport;
-  final Function(List<Identifier>, AstNode) onUnnecessaryKeysReport;
-
-  @override
-  void visitClassDeclaration(ClassDeclaration node) {
-    log.finer('_HookWidgetVisitor: visit($node)');
-
-    switch (node.extendsClause?.superclass.name.name) {
-      case 'HookWidget':
-      case 'HookConsumerWidget':
-        final fieldDeclarationVisitor = _FieldDeclarationVisitor(
-          context: context,
-        );
-
-        node.visitChildren(fieldDeclarationVisitor);
-
-        final buildVisitor = _BuildVisitor(
-          context: context,
-          onMissingKeysReport: onMissingKeysReport,
-          onUnnecessaryKeysReport: onUnnecessaryKeysReport,
-        );
-
-        node.visitChildren(buildVisitor);
-    }
-  }
-}
-
 class _FieldDeclarationVisitor extends SimpleAstVisitor<void> {
   _FieldDeclarationVisitor({
     required this.context,
@@ -133,42 +108,6 @@ class _FieldDeclarationVisitor extends SimpleAstVisitor<void> {
 
       context.addClassField(decl.name);
     }
-  }
-}
-
-class _BuildVisitor extends SimpleAstVisitor<void> {
-  _BuildVisitor({
-    required this.context,
-    required this.onMissingKeysReport,
-    required this.onUnnecessaryKeysReport,
-  });
-
-  final _Context context;
-  final Function(List<Identifier>, AstNode) onMissingKeysReport;
-  final Function(List<Identifier>, AstNode) onUnnecessaryKeysReport;
-
-  @override
-  void visitMethodDeclaration(MethodDeclaration node) {
-    if (node.name.name != 'build') return;
-
-    log.finer('_BuildVisitor: visit($node)');
-
-    final block = node.findChild<BlockFunctionBody>()?.findChild<Block>();
-
-    if (block == null) return;
-
-    final variableDeclarationVisitor =
-        _VariableDeclarationVisitor(context: context);
-
-    block.visitChildren(variableDeclarationVisitor);
-
-    final useEffectVisitor = _UseEffectVisitor(
-      context: context,
-      onMissingKeysReport: onMissingKeysReport,
-      onUnnecessaryKeysReport: onUnnecessaryKeysReport,
-    );
-
-    block.visitChildren(useEffectVisitor);
   }
 }
 
@@ -210,8 +149,8 @@ class _UseEffectVisitor extends SimpleAstVisitor<void> {
   });
 
   final _Context context;
-  final Function(List<Identifier>, AstNode) onMissingKeysReport;
-  final Function(List<Identifier>, AstNode) onUnnecessaryKeysReport;
+  final void Function(List<Identifier>, AstNode) onMissingKeysReport;
+  final void Function(List<Identifier>, AstNode) onUnnecessaryKeysReport;
 
   @override
   void visitExpressionStatement(ExpressionStatement node) {
