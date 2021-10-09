@@ -8,18 +8,18 @@ class LintError {
     required this.node,
   });
 
-  factory LintError.missingDeps(List<Identifier> deps, AstNode node) {
+  factory LintError.missingKeys(List<Identifier> keys, AstNode node) {
     return LintError(
-      message: "missing deps '${deps.join(',')}'",
-      code: 'missing_deps',
+      message: "missing keys '${keys.join(',')}'",
+      code: 'missing_keys',
       node: node,
     );
   }
 
-  factory LintError.unnecessaryDeps(List<Identifier> deps, AstNode node) {
+  factory LintError.unnecessaryKeys(List<Identifier> keys, AstNode node) {
     return LintError(
-      message: "unnecessary deps '${deps.join(',')}'",
-      code: 'unnecessary_deps',
+      message: "unnecessary keys '${keys.join(',')}'",
+      code: 'unnecessary_keys',
       node: node,
     );
   }

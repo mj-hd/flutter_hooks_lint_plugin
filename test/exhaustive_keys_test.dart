@@ -1,5 +1,5 @@
 import 'package:analyzer/dart/ast/ast.dart';
-import 'package:flutter_hooks_lint_plugin/src/plugin/exhaustive_deps.dart';
+import 'package:flutter_hooks_lint_plugin/src/plugin/exhaustive_keys.dart';
 import 'package:test/test.dart';
 import 'package:tuple/tuple.dart';
 
@@ -9,34 +9,34 @@ Future<Tuple2<List<Identifier>?, List<Identifier>?>> _find(
     String source) async {
   final unit = await compileCode(source);
 
-  var missingDeps;
-  var unnecessaryDeps;
+  var missingKeys;
+  var unnecessaryKeys;
 
-  findExhaustiveDeps(
+  findExhaustiveKeys(
     unit,
-    onMissingDepsReport: (deps, node) {
-      missingDeps = deps;
+    onMissingKeysReport: (keys, node) {
+      missingKeys = keys;
     },
-    onUnnecessaryDepsReport: (deps, node) {
-      unnecessaryDeps = deps;
+    onUnnecessaryKeysReport: (keys, node) {
+      unnecessaryKeys = keys;
     },
   );
 
-  return Tuple2(missingDeps, unnecessaryDeps);
+  return Tuple2(missingKeys, unnecessaryKeys);
 }
 
-Future<List<Identifier>?> _findMissingDeps(String source) async {
+Future<List<Identifier>?> _findMissingKeys(String source) async {
   return (await _find(source)).item1;
 }
 
-Future<List<Identifier>?> _findUnnecessaryDeps(String source) async {
+Future<List<Identifier>?> _findUnnecessaryKeys(String source) async {
   return (await _find(source)).item2;
 }
 
 void main() {
   setUpLogging();
 
-  group('exhaustive deps', () {
+  group('exhaustive keys', () {
     test('report class property reference', () async {
       final source = '''
         class TestWidget extends HookWidget {
@@ -58,11 +58,11 @@ void main() {
         }
       ''';
 
-      final deps = await _findMissingDeps(source);
+      final keys = await _findMissingKeys(source);
 
-      expect(deps, isNotNull);
-      expect(deps!.length, 1);
-      expect(deps[0].name, 'dep');
+      expect(keys, isNotNull);
+      expect(keys!.length, 1);
+      expect(keys[0].name, 'dep');
     });
 
     test('report local variable reference', () async {
@@ -87,11 +87,11 @@ void main() {
         }
       ''';
 
-      final deps = await _findMissingDeps(source);
+      final keys = await _findMissingKeys(source);
 
-      expect(deps, isNotNull);
-      expect(deps!.length, 1);
-      expect(deps[0].name, 'dep');
+      expect(keys, isNotNull);
+      expect(keys!.length, 1);
+      expect(keys[0].name, 'dep');
     });
 
     test('ignore useState value reference', () async {
@@ -112,9 +112,9 @@ void main() {
         }
       ''';
 
-      final deps = await _findMissingDeps(source);
+      final keys = await _findMissingKeys(source);
 
-      expect(deps, isNull);
+      expect(keys, isNull);
     });
 
     test('ignore useRef value reference', () async {
@@ -133,9 +133,9 @@ void main() {
         }
       ''';
 
-      final deps = await _findMissingDeps(source);
+      final keys = await _findMissingKeys(source);
 
-      expect(deps, isNull);
+      expect(keys, isNull);
     });
 
     test('ignore local const reference', () async {
@@ -154,9 +154,9 @@ void main() {
         }
       ''';
 
-      final deps = await _findMissingDeps(source);
+      final keys = await _findMissingKeys(source);
 
-      expect(deps, isNull);
+      expect(keys, isNull);
     });
 
     test('ignore top-level const reference', () async {
@@ -175,9 +175,9 @@ void main() {
         }
       ''';
 
-      final deps = await _findMissingDeps(source);
+      final keys = await _findMissingKeys(source);
 
-      expect(deps, isNull);
+      expect(keys, isNull);
     });
 
     test('ignore library reference', () async {
@@ -196,9 +196,9 @@ void main() {
         }
       ''';
 
-      final deps = await _findMissingDeps(source);
+      final keys = await _findMissingKeys(source);
 
-      expect(deps, isNull);
+      expect(keys, isNull);
     });
   });
 }

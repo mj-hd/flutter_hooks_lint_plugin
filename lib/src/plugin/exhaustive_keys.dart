@@ -2,22 +2,22 @@ import 'package:analyzer/dart/ast/ast.dart';
 import 'package:analyzer/dart/ast/visitor.dart';
 import 'package:logging/logging.dart';
 
-final log = Logger('exhaustive_deps');
+final log = Logger('exhaustive_keys');
 
-void findExhaustiveDeps(
+void findExhaustiveKeys(
   CompilationUnit unit, {
-  required Function(List<Identifier>, AstNode) onMissingDepsReport,
-  required Function(List<Identifier>, AstNode) onUnnecessaryDepsReport,
+  required Function(List<Identifier>, AstNode) onMissingKeysReport,
+  required Function(List<Identifier>, AstNode) onUnnecessaryKeysReport,
 }) {
-  log.finer('findExhaustiveDeps');
+  log.finer('findExhaustiveKeys');
 
   final context = _Context();
 
   unit.visitChildren(
     _HookWidgetVisitor(
       context: context,
-      onMissingDepsReport: onMissingDepsReport,
-      onUnnecessaryDepsReport: onUnnecessaryDepsReport,
+      onMissingKeysReport: onMissingKeysReport,
+      onUnnecessaryKeysReport: onUnnecessaryKeysReport,
     ),
   );
 }
@@ -81,13 +81,13 @@ class _Context {
 class _HookWidgetVisitor extends SimpleAstVisitor<void> {
   _HookWidgetVisitor({
     required this.context,
-    required this.onMissingDepsReport,
-    required this.onUnnecessaryDepsReport,
+    required this.onMissingKeysReport,
+    required this.onUnnecessaryKeysReport,
   });
 
   final _Context context;
-  final Function(List<Identifier>, AstNode) onMissingDepsReport;
-  final Function(List<Identifier>, AstNode) onUnnecessaryDepsReport;
+  final Function(List<Identifier>, AstNode) onMissingKeysReport;
+  final Function(List<Identifier>, AstNode) onUnnecessaryKeysReport;
 
   @override
   void visitClassDeclaration(ClassDeclaration node) {
@@ -104,8 +104,8 @@ class _HookWidgetVisitor extends SimpleAstVisitor<void> {
 
         final buildVisitor = _BuildVisitor(
           context: context,
-          onMissingDepsReport: onMissingDepsReport,
-          onUnnecessaryDepsReport: onUnnecessaryDepsReport,
+          onMissingKeysReport: onMissingKeysReport,
+          onUnnecessaryKeysReport: onUnnecessaryKeysReport,
         );
 
         node.visitChildren(buildVisitor);
@@ -139,13 +139,13 @@ class _FieldDeclarationVisitor extends SimpleAstVisitor<void> {
 class _BuildVisitor extends SimpleAstVisitor<void> {
   _BuildVisitor({
     required this.context,
-    required this.onMissingDepsReport,
-    required this.onUnnecessaryDepsReport,
+    required this.onMissingKeysReport,
+    required this.onUnnecessaryKeysReport,
   });
 
   final _Context context;
-  final Function(List<Identifier>, AstNode) onMissingDepsReport;
-  final Function(List<Identifier>, AstNode) onUnnecessaryDepsReport;
+  final Function(List<Identifier>, AstNode) onMissingKeysReport;
+  final Function(List<Identifier>, AstNode) onUnnecessaryKeysReport;
 
   @override
   void visitMethodDeclaration(MethodDeclaration node) {
@@ -164,8 +164,8 @@ class _BuildVisitor extends SimpleAstVisitor<void> {
 
     final useEffectVisitor = _UseEffectVisitor(
       context: context,
-      onMissingDepsReport: onMissingDepsReport,
-      onUnnecessaryDepsReport: onUnnecessaryDepsReport,
+      onMissingKeysReport: onMissingKeysReport,
+      onUnnecessaryKeysReport: onUnnecessaryKeysReport,
     );
 
     block.visitChildren(useEffectVisitor);
@@ -205,13 +205,13 @@ class _VariableDeclarationVisitor extends SimpleAstVisitor<void> {
 class _UseEffectVisitor extends SimpleAstVisitor<void> {
   _UseEffectVisitor({
     required this.context,
-    required this.onMissingDepsReport,
-    required this.onUnnecessaryDepsReport,
+    required this.onMissingKeysReport,
+    required this.onUnnecessaryKeysReport,
   });
 
   final _Context context;
-  final Function(List<Identifier>, AstNode) onMissingDepsReport;
-  final Function(List<Identifier>, AstNode) onUnnecessaryDepsReport;
+  final Function(List<Identifier>, AstNode) onMissingKeysReport;
+  final Function(List<Identifier>, AstNode) onUnnecessaryKeysReport;
 
   @override
   void visitExpressionStatement(ExpressionStatement node) {
@@ -224,76 +224,76 @@ class _UseEffectVisitor extends SimpleAstVisitor<void> {
     if (inv.methodName.name == 'useEffect') {
       log.finest('_UseEffectVisitor: useEffect found');
 
-      final actualDeps = <Identifier>[];
-      final expectedDeps = <Identifier>[];
+      final actualKeys = <Identifier>[];
+      final expectedKeys = <Identifier>[];
 
       final arguments = inv.argumentList.arguments;
 
       if (arguments.isNotEmpty) {
         if (arguments.length == 1) {
-          log.finest('_UseEffectVisitor: useEffect without deps');
+          log.finest('_UseEffectVisitor: useEffect without keys');
         }
 
         if (arguments.length == 2) {
-          log.finest('_UseEffectVisitor: useEffect with deps');
+          log.finest('_UseEffectVisitor: useEffect with keys');
 
-          final deps = arguments[1];
+          final keys = arguments[1];
 
-          if (deps is ListLiteral) {
-            log.finest('_UseEffectVisitor: useEffect with list deps');
+          if (keys is ListLiteral) {
+            log.finest('_UseEffectVisitor: useEffect with list keys');
 
-            final visitor = _DepsIdentifierVisitor(
+            final visitor = _KeysIdentifierVisitor(
               context: context,
             );
 
-            deps.visitChildren(visitor);
+            keys.visitChildren(visitor);
 
-            actualDeps.addAll(visitor.idents);
+            actualKeys.addAll(visitor.idents);
 
-            log.finest('_UseEffectVisitor: actual deps $actualDeps');
+            log.finest('_UseEffectVisitor: actual keys $actualKeys');
           }
         }
 
-        final visitor = _DepsIdentifierVisitor(
+        final visitor = _KeysIdentifierVisitor(
           context: context,
         );
 
         final body = arguments[0];
         body.visitChildren(visitor);
 
-        expectedDeps.addAll(visitor.idents);
+        expectedKeys.addAll(visitor.idents);
 
-        log.finest('_UseEffectVisitor: expected deps $expectedDeps');
+        log.finest('_UseEffectVisitor: expected keys $expectedKeys');
 
-        final missingDeps = <Identifier>[];
-        final unnecessaryDeps = <Identifier>[];
+        final missingKeys = <Identifier>[];
+        final unnecessaryKeys = <Identifier>[];
 
-        for (final dep in expectedDeps) {
-          if (!actualDeps.any(dep.equalsByStaticElement)) {
-            missingDeps.add(dep);
+        for (final key in expectedKeys) {
+          if (!actualKeys.any(key.equalsByStaticElement)) {
+            missingKeys.add(key);
           }
         }
 
-        log.finest('_UseEffectVisitor: missing deps $missingDeps');
+        log.finest('_UseEffectVisitor: missing keys $missingKeys');
 
-        for (final dep in actualDeps) {
-          if (!expectedDeps.any(dep.equalsByStaticElement)) {
-            unnecessaryDeps.add(dep);
+        for (final key in actualKeys) {
+          if (!expectedKeys.any(key.equalsByStaticElement)) {
+            unnecessaryKeys.add(key);
           }
         }
 
-        log.finest('_UseEffectVisitor: unnecessary deps $unnecessaryDeps');
+        log.finest('_UseEffectVisitor: unnecessary keys $unnecessaryKeys');
 
-        if (missingDeps.isNotEmpty) {
-          onMissingDepsReport(
-            missingDeps,
+        if (missingKeys.isNotEmpty) {
+          onMissingKeysReport(
+            missingKeys,
             inv,
           );
         }
 
-        if (unnecessaryDeps.isNotEmpty) {
-          onUnnecessaryDepsReport(
-            unnecessaryDeps,
+        if (unnecessaryKeys.isNotEmpty) {
+          onUnnecessaryKeysReport(
+            unnecessaryKeys,
             inv,
           );
         }
@@ -302,8 +302,8 @@ class _UseEffectVisitor extends SimpleAstVisitor<void> {
   }
 }
 
-class _DepsIdentifierVisitor extends GeneralizingAstVisitor<void> {
-  _DepsIdentifierVisitor({
+class _KeysIdentifierVisitor extends GeneralizingAstVisitor<void> {
+  _KeysIdentifierVisitor({
     required this.context,
   });
 
@@ -313,17 +313,17 @@ class _DepsIdentifierVisitor extends GeneralizingAstVisitor<void> {
 
   @override
   void visitIdentifier(Identifier node) {
-    log.finer('_DepsIdentifierVisitor: visit($node)');
+    log.finer('_KeysIdentifierVisitor: visit($node)');
 
     if (node.staticElement == null) return;
     if (!context.isVarialbe(node)) return;
 
-    log.finest('_DepsIdentifierVisitor: $node is variable');
+    log.finest('_KeysIdentifierVisitor: $node is variable');
 
     if (!_idents.any(node.equalsByName)) {
       _idents.add(node);
     } else {
-      log.finest('_DepsIdentifierVisitor: $node is already added');
+      log.finest('_KeysIdentifierVisitor: $node is already added');
     }
   }
 
