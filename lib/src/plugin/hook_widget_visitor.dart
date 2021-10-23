@@ -1,5 +1,6 @@
 import 'package:analyzer/dart/ast/ast.dart';
 import 'package:analyzer/dart/ast/visitor.dart';
+import 'package:analyzer/dart/element/element.dart';
 import 'package:logging/logging.dart';
 
 final log = Logger('hook_widget_visitor');
@@ -23,7 +24,8 @@ class HookWidgetVisitor<C> extends SimpleAstVisitor<void> {
 
   final C context;
   final void Function(C context, ClassDeclaration node)? onClassDeclaration;
-  final void Function(C context, Block node)? onBuildBlock;
+  final void Function(C context, Block node, ExecutableElement? elem)?
+      onBuildBlock;
 
   @override
   void visitClassDeclaration(ClassDeclaration node) {
@@ -48,7 +50,8 @@ class _BuildVisitor<C> extends SimpleAstVisitor<void> {
   );
 
   final C context;
-  final void Function(C context, Block node) visitHandler;
+  final void Function(C context, Block node, ExecutableElement? elem)
+      visitHandler;
 
   @override
   void visitMethodDeclaration(MethodDeclaration node) {
@@ -60,6 +63,6 @@ class _BuildVisitor<C> extends SimpleAstVisitor<void> {
 
     if (block == null) return;
 
-    visitHandler(context, block);
+    visitHandler(context, block, node.declaredElement);
   }
 }

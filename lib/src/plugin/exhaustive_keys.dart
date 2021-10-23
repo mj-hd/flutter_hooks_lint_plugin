@@ -1,5 +1,6 @@
 import 'package:analyzer/dart/ast/ast.dart';
 import 'package:analyzer/dart/ast/visitor.dart';
+import 'package:analyzer/dart/element/element.dart';
 import 'package:flutter_hooks_lint_plugin/src/plugin/hook_widget_visitor.dart';
 import 'package:logging/logging.dart';
 
@@ -7,8 +8,8 @@ final log = Logger('exhaustive_keys');
 
 void findExhaustiveKeys(
   CompilationUnit unit, {
-  required void Function(List<Identifier>, AstNode) onMissingKeysReport,
-  required void Function(List<Identifier>, AstNode) onUnnecessaryKeysReport,
+  required void Function(List<Element>, AstNode) onMissingKeysReport,
+  required void Function(List<Element>, AstNode) onUnnecessaryKeysReport,
 }) {
   log.finer('findExhaustiveKeys');
 
@@ -18,15 +19,11 @@ void findExhaustiveKeys(
     HookWidgetVisitor(
       context,
       onClassDeclaration: (_Context context, node) {
-        final fieldDeclarationVisitor = _FieldDeclarationVisitor(
-          context: context,
-        );
-
-        node.visitChildren(fieldDeclarationVisitor);
+        context.addClassFields(node);
       },
-      onBuildBlock: (_Context context, node) {
+      onBuildBlock: (_Context context, node, elem) {
         final variableDeclarationVisitor =
-            _VariableDeclarationVisitor(context: context);
+            _LocalVariableVisitor(context: context);
 
         node.visitChildren(variableDeclarationVisitor);
 
@@ -42,77 +39,67 @@ void findExhaustiveKeys(
   );
 }
 
-extension on Identifier {
-  bool equalsByStaticElement(Identifier other) {
-    if (staticElement == null) return false;
-
-    return staticElement?.id == other.staticElement?.id;
-  }
-
-  bool equalsByName(Identifier other) {
-    return name == other.name;
-  }
-}
-
 class _Context {
-  final List<Identifier> _localVariables = [];
-  final List<Identifier> _classFields = [];
+  final List<FieldElement> _classFields = [];
+  final List<VariableElement> _localVariables = [];
+  final List<VariableElement> _stateVariables = [];
 
-  void addLocalVariable(Identifier ident) {
-    log.finer('_Context: addLocalVariable($ident)');
+  void addLocalVariable(VariableElement variable) {
+    log.finer('_Context: addLocalVariable($variable)');
 
-    _localVariables.add(ident);
+    _localVariables.add(variable);
   }
 
-  void addClassField(Identifier ident) {
-    log.finer('_Context: addClassVariable($ident)');
+  void addStateVariable(VariableElement variable) {
+    log.finer('_Context: addStateVariable($variable)');
 
-    _classFields.add(ident);
+    _stateVariables.add(variable);
   }
 
-  bool isVarialbe(Identifier ident) {
-    log.finer('_Context: isVariable($ident)');
+  void addClassFields(ClassDeclaration klass) {
+    log.finer('_Context: addClassFields($klass)');
 
-    if (_localVariables.any(ident.equalsByStaticElement)) {
-      log.finest('_Context: isVariable($ident) => local variable');
+    if (klass.declaredElement == null) {
+      log.finer('_Context: class element is not resolved');
+      return;
+    }
+
+    _classFields.addAll(
+      klass.declaredElement!.fields.where(
+        (elem) => !elem.isConst,
+      ),
+    );
+  }
+
+  bool isBuildVarialbe(Element variable) {
+    log.finer('_Context: isBuildVarialbe($variable)');
+
+    if (_localVariables.contains(variable)) {
+      log.finest('_Context: isBuildVarialbe($variable) => local variable');
       return true;
     }
 
-    if (_classFields.any(ident.equalsByName)) {
-      log.finest('_Context: isVariable($ident) => class field');
+    if (_classFields.contains(variable)) {
+      log.finest('_Context: isBuildVariable($variable) => class field');
       return true;
     }
 
-    log.finest('_Context: isVariable($ident) => not variable');
+    if (_classFields.map((e) => e.getter).contains(variable)) {
+      log.finest('_Context: isBuildVariable($variable) => class getter field');
+      return true;
+    }
+
+    log.finest('_Context: isBuildVariable($variable) => not build variable');
     return false;
   }
-}
 
-class _FieldDeclarationVisitor extends SimpleAstVisitor<void> {
-  _FieldDeclarationVisitor({
-    required this.context,
-  });
-
-  final _Context context;
-
-  @override
-  void visitFieldDeclaration(FieldDeclaration node) {
-    if (node.isStatic) return;
-
-    log.finer('_FieldDeclarationVisitor: visit($node)');
-
-    for (final decl in node.fields.variables) {
-      log.finest('_FieldDeclarationVisitor: check $decl');
-
-      if (decl.isConst) continue;
-
-      context.addClassField(decl.name);
-    }
+  bool isStateVariable(Element variable) {
+    return _stateVariables.contains(variable);
   }
 }
 
-class _VariableDeclarationVisitor extends SimpleAstVisitor<void> {
-  _VariableDeclarationVisitor({
+class _LocalVariableVisitor extends SimpleAstVisitor<void> {
+  _LocalVariableVisitor({
     required this.context,
   });
 
@@ -126,18 +113,42 @@ class _VariableDeclarationVisitor extends SimpleAstVisitor<void> {
         .findChild<VariableDeclarationList>()
         ?.findChild<VariableDeclaration>();
 
-    if (decl == null) return;
-    if (decl.isConst) return;
+    if (decl == null) {
+      log.finest(
+          '_VariableDeclarationVisitor: visit($node) => variable declaration not found');
+      return;
+    }
+    if (decl.isConst) {
+      log.finest(
+          '_VariableDeclarationVisitor: visit($node) => variable is const');
+      return;
+    }
 
     final initializer = decl.initializer;
 
     if (initializer is MethodInvocation &&
-        initializer.methodName.name == 'useState') return;
+        initializer.methodName.name == 'useState') {
+      log.finest(
+          '_VariableDeclarationVisitor: visit($node) => variable is useState');
+      return;
+    }
 
     if (initializer is MethodInvocation &&
-        initializer.methodName.name == 'useRef') return;
+        initializer.methodName.name == 'useRef') {
+      log.finest(
+          '_VariableDeclarationVisitor: visit($node) => variable is useRef');
+      return;
+    }
 
-    context.addLocalVariable(decl.name);
+    final elem = decl.name.staticElement;
+
+    if (elem is! LocalVariableElement) {
+      log.finest(
+          '_VariableDeclarationVisitor: visit($node) => variable is not LocalVariableElement');
+      return;
+    }
+
+    context.addLocalVariable(elem);
   }
 }
 
@@ -149,8 +160,8 @@ class _UseEffectVisitor extends SimpleAstVisitor<void> {
   });
 
   final _Context context;
-  final void Function(List<Identifier>, AstNode) onMissingKeysReport;
-  final void Function(List<Identifier>, AstNode) onUnnecessaryKeysReport;
+  final void Function(List<Element>, AstNode) onMissingKeysReport;
+  final void Function(List<Element>, AstNode) onUnnecessaryKeysReport;
 
   @override
   void visitExpressionStatement(ExpressionStatement node) {
@@ -163,8 +174,8 @@ class _UseEffectVisitor extends SimpleAstVisitor<void> {
     if (inv.methodName.name == 'useEffect') {
       log.finest('_UseEffectVisitor: useEffect found');
 
-      final actualKeys = <Identifier>[];
-      final expectedKeys = <Identifier>[];
+      final actualKeys = <Element>[];
+      final expectedKeys = <Element>[];
 
       final arguments = inv.argumentList.arguments;
 
@@ -195,6 +206,7 @@ class _UseEffectVisitor extends SimpleAstVisitor<void> {
 
         final visitor = _KeysIdentifierVisitor(
           context: context,
+          test: (elem) => context.isBuildVarialbe(elem),
         );
 
         final body = arguments[0];
@@ -204,11 +216,11 @@ class _UseEffectVisitor extends SimpleAstVisitor<void> {
 
         log.finest('_UseEffectVisitor: expected keys $expectedKeys');
 
-        final missingKeys = <Identifier>[];
-        final unnecessaryKeys = <Identifier>[];
+        final missingKeys = <Element>[];
+        final unnecessaryKeys = <Element>[];
 
         for (final key in expectedKeys) {
-          if (!actualKeys.any(key.equalsByStaticElement)) {
+          if (!actualKeys.contains(key)) {
             missingKeys.add(key);
           }
         }
@@ -216,7 +228,7 @@ class _UseEffectVisitor extends SimpleAstVisitor<void> {
         log.finest('_UseEffectVisitor: missing keys $missingKeys');
 
         for (final key in actualKeys) {
-          if (!expectedKeys.any(key.equalsByStaticElement)) {
+          if (!expectedKeys.contains(key)) {
             unnecessaryKeys.add(key);
           }
         }
@@ -241,30 +253,109 @@ class _UseEffectVisitor extends SimpleAstVisitor<void> {
   }
 }
 
-class _KeysIdentifierVisitor extends GeneralizingAstVisitor<void> {
+class _KeysIdentifierVisitor extends RecursiveAstVisitor<void> {
   _KeysIdentifierVisitor({
     required this.context,
+    this.test,
   });
 
   final _Context context;
 
-  final List<Identifier> _idents = [];
+  final List<Element> _idents = [];
+  final bool Function(Element elem)? test;
 
   @override
-  void visitIdentifier(Identifier node) {
-    log.finer('_KeysIdentifierVisitor: visit($node)');
+  void visitPrefixedIdentifier(PrefixedIdentifier node) {
+    log.finer('_KeysIdentifierVisitor: visitPrefixedIdentifier($node)');
 
-    if (node.staticElement == null) return;
-    if (!context.isVarialbe(node)) return;
-
-    log.finest('_KeysIdentifierVisitor: $node is variable');
-
-    if (!_idents.any(node.equalsByName)) {
-      _idents.add(node);
-    } else {
-      log.finest('_KeysIdentifierVisitor: $node is already added');
+    final prefix = node.prefix.staticElement;
+    if (prefix != null && context.isStateVariable(prefix)) {
+      _visitElement(node.identifier.staticElement);
     }
   }
 
-  List<Identifier> get idents => _idents;
+  @override
+  void visitPropertyAccess(PropertyAccess node) {
+    log.finer('_KeysIdentifierVisitor: visitPropertyAccess($node)');
+
+    final visitor = _PropertyAccessVisitor(node.propertyName);
+
+    node.visitChildren(visitor);
+
+    final idents = visitor.idents;
+
+    if (idents.isNotEmpty) {
+      final first = idents.first.staticElement;
+
+      if (first != null && context.isStateVariable(first)) {
+        final last = idents.last;
+        _visitElement(last.staticElement);
+      }
+    }
+  }
+
+  @override
+  void visitIndexExpression(IndexExpression node) {
+    log.finer('_KeysIdentifierVisitor: visitIndexExpression($node)');
+    final elem = node.staticElement;
+
+    _visitElement(elem);
+
+    return super.visitIndexExpression(node);
+  }
+
+  @override
+  void visitSimpleIdentifier(SimpleIdentifier node) {
+    log.finer('_KeysIdentifierVisitor: visitSimpleIdentifier($node)');
+    final elem = node.staticElement;
+
+    _visitElement(elem);
+
+    return super.visitSimpleIdentifier(node);
+  }
+
+  void _visitElement(Element? elem) {
+    log.finer('_KeysIdentifierVisitor: _visitElement($elem)');
+
+    if (elem == null) {
+      log.finest(
+          '_KeysIdentifierVisitor: _visitElement($elem) => element is not resolved');
+      return;
+    }
+
+    if (test != null && !test!(elem)) {
+      log.finest(
+          '_KeysIdentifierVisitor: _visitElement($elem) => test not passed');
+      return;
+    }
+
+    if (!_idents.contains(elem)) {
+      log.finest('_KeysIdentifierVisitor: _visitElement($elem) => add');
+      _idents.add(elem);
+    } else {
+      log.finest(
+          '_KeysIdentifierVisitor: _visitElement($elem) => already added');
+    }
+  }
+
+  List<Element> get idents => _idents;
+}
+
+class _PropertyAccessVisitor extends RecursiveAstVisitor<void> {
+  _PropertyAccessVisitor(SimpleIdentifier propertyName)
+      : idents = [propertyName];
+
+  List<SimpleIdentifier> idents;
+
+  @override
+  void visitPropertyAccess(PropertyAccess node) {
+    idents.insert(0, node.propertyName);
+
+    return super.visitPropertyAccess(node);
+  }
+
+  @override
+  void visitPrefixedIdentifier(PrefixedIdentifier node) {
+    idents.insertAll(0, [node.prefix, node.identifier]);
+  }
 }

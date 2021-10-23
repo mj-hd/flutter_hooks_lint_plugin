@@ -1,4 +1,5 @@
 import 'package:analyzer/dart/ast/ast.dart';
+import 'package:analyzer/dart/element/element.dart';
 import 'package:analyzer_plugin/protocol/protocol_common.dart' as plugin;
 
 class LintError {
@@ -8,17 +9,17 @@ class LintError {
     required this.node,
   });
 
-  factory LintError.missingKeys(List<Identifier> keys, AstNode node) {
+  factory LintError.missingKeys(List<Element> keys, AstNode node) {
     return LintError(
-      message: "missing keys '${keys.join(',')}'",
+      message: "missing keys '${keys.map((e) => e.name).join(',')}'",
       code: 'missing_keys',
       node: node,
     );
   }
 
-  factory LintError.unnecessaryKeys(List<Identifier> keys, AstNode node) {
+  factory LintError.unnecessaryKeys(List<Element> keys, AstNode node) {
     return LintError(
-      message: "unnecessary keys '${keys.join(',')}'",
+      message: "unnecessary keys '${keys.map((e) => e.name).join(',')}'",
       code: 'unnecessary_keys',
       node: node,
     );

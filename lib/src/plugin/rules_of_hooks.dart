@@ -16,7 +16,7 @@ void findRulesOfHooks(
   unit.visitChildren(
     HookWidgetVisitor(
       context,
-      onBuildBlock: (_Context context, node) {
+      onBuildBlock: (_Context context, node, _) {
         node.visitChildren(
           _HooksInvocationVisitor(
             context: context,
