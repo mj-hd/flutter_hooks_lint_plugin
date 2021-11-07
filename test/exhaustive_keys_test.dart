@@ -88,6 +88,56 @@ void main() {
       expect(keys, ['dep']);
     });
 
+    test('report useMemoized', () async {
+      final source = '''
+        class TestWidget extends HookWidget {
+          const TestWidget({
+            Key? key,
+            required this.dep,
+          }): super(key: key);
+
+          final String dep;
+
+          @override
+          Widget build(BuildContext context) {
+            final test = useMemoized(() => dep, []);
+
+            return Text('TestWidget');
+          }
+        }
+      ''';
+
+      final keys = await _findMissingKeys(source);
+
+      expect(keys, ['dep']);
+    });
+
+    test('report useCallback', () async {
+      final source = '''
+        class TestWidget extends HookWidget {
+          const TestWidget({
+            Key? key,
+            required this.dep,
+          }): super(key: key);
+
+          final String dep;
+
+          @override
+          Widget build(BuildContext context) {
+            final test = useCallback(() {
+              print(dep);
+            }, []);
+
+            return Text('TestWidget');
+          }
+        }
+      ''';
+
+      final keys = await _findMissingKeys(source);
+
+      expect(keys, ['dep']);
+    });
+
     test('report complex dotted value', () async {
       final source = '''
         class TestWidget extends HookWidget {
