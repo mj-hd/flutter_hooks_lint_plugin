@@ -124,7 +124,16 @@ class FlutterHooksRulesPlugin extends ServerPlugin {
   ) {
     final errors = <plugin.AnalysisErrorFixes>[];
 
+    final supression = Supression(
+      content: analysisResult.content,
+      lineInfo: unit.lineInfo!,
+    );
+
     void report(LintError err, [LintFix? fix]) {
+      if (supression.isSupressedLintError(err)) {
+        return;
+      }
+
       errors.add(
         plugin.AnalysisErrorFixes(
           err.toAnalysisError(filePath, unit),

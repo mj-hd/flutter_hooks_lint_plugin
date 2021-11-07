@@ -345,17 +345,19 @@ class _HooksVisitor extends SimpleAstVisitor<void> {
 
           log.finest('_HooksVisitor: unnecessary keys $unnecessaryKeys');
 
+          final node = arguments.length == 2 ? arguments[1] : inv.methodName;
+
           for (final key in missingKeys) {
             onMissingKeyReport(
               key.toString(),
-              inv,
+              node,
             );
           }
 
           for (final key in unnecessaryKeys) {
             onUnnecessaryKeyReport(
               key.toString(),
-              inv,
+              node,
             );
           }
         }
