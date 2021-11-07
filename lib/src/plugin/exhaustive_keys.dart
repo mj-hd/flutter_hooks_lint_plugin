@@ -18,25 +18,39 @@ void findExhaustiveKeys(
 }) {
   log.finer('findExhaustiveKeys');
 
+  void onBuildBlock(_Context context, node) {
+    final variableDeclarationVisitor = _LocalVariableVisitor(context: context);
+
+    node.visitChildren(variableDeclarationVisitor);
+
+    final hooksVisitor = _HooksVisitor(
+      context: context,
+      onMissingKeyReport: onMissingKeyReport,
+      onUnnecessaryKeyReport: onUnnecessaryKeyReport,
+    );
+
+    node.visitChildren(hooksVisitor);
+  }
+
   unit.visitChildren(
     HookWidgetVisitor(
       contextBuilder: () => _Context(),
       onClassDeclaration: (_Context context, node) {
         context.addClassFields(node);
       },
-      onBuildBlock: (_Context context, node, elem) {
-        final variableDeclarationVisitor =
-            _LocalVariableVisitor(context: context);
+      onBuildBlock: (_Context context, node, _) => onBuildBlock(context, node),
+    ),
+  );
 
-        node.visitChildren(variableDeclarationVisitor);
+  unit.visitChildren(
+    CustomHookFunctionVisitor(
+      contextBuilder: () => _Context(),
+      onBuildBlock: (_Context context, node, params) {
+        if (params != null) {
+          context.addFunctionParams(params);
+        }
 
-        final hooksVisitor = _HooksVisitor(
-          context: context,
-          onMissingKeyReport: onMissingKeyReport,
-          onUnnecessaryKeyReport: onUnnecessaryKeyReport,
-        );
-
-        node.visitChildren(hooksVisitor);
+        onBuildBlock(context, node);
       },
     ),
   );
@@ -122,6 +136,7 @@ class _Context {
   final List<FieldElement> _classFields = [];
   final List<VariableElement> _localVariables = [];
   final List<VariableElement> _stateVariables = [];
+  final List<ParameterElement> _params = [];
 
   void addLocalVariable(VariableElement variable) {
     log.finer('_Context: addLocalVariable($variable)');
@@ -150,6 +165,18 @@ class _Context {
     );
   }
 
+  void addFunctionParams(FormalParameterList params) {
+    log.finer('_Context: addFunctionParams($params)');
+
+    _params.addAll(
+      params.parameters
+          .map(
+            (param) => param.declaredElement,
+          )
+          .whereType<ParameterElement>(),
+    );
+  }
+
   /// returns whether the variable is a build-related variable (class fields, local variables, ...)
   bool isBuildVariable(Key variable) {
     log.finer('_Context: isBuildVarialbe($variable)');
@@ -170,6 +197,11 @@ class _Context {
     for (final element in variable.staticElements) {
       if (_elementContains(_localVariables, element)) {
         log.finest('_Context: isBuildVarialbe($variable) => local variable');
+        return true;
+      }
+
+      if (_elementContains(_params, element)) {
+        log.finest('_Context: isBuildVariable($variable) => function param');
         return true;
       }
 
@@ -257,7 +289,7 @@ class _LocalVariableVisitor extends SimpleAstVisitor<void> {
   }
 }
 
-class _HooksVisitor extends SimpleAstVisitor<void> {
+class _HooksVisitor extends RecursiveAstVisitor<void> {
   _HooksVisitor({
     required this.context,
     required this.onMissingKeyReport,
@@ -269,10 +301,11 @@ class _HooksVisitor extends SimpleAstVisitor<void> {
   final ExhaustiveKeysReportCallback onMissingKeyReport;
   final ExhaustiveKeysReportCallback onUnnecessaryKeyReport;
 
-  void _visitHookInvocation(MethodInvocation inv) {
-    log.finer('_HooksVisitor: _visitHookInvocation($inv)');
+  @override
+  void visitMethodInvocation(MethodInvocation node) {
+    log.finer('_HooksVisitor: visitMethodInvocation($node)');
 
-    switch (inv.methodName.name) {
+    switch (node.methodName.name) {
       case 'useEffect':
       case 'useMemoized':
       case 'useCallback':
@@ -281,7 +314,7 @@ class _HooksVisitor extends SimpleAstVisitor<void> {
         final actualKeys = <Key>[];
         final expectedKeys = <Key>[];
 
-        final arguments = inv.argumentList.arguments;
+        final arguments = node.argumentList.arguments;
 
         // find identifiers in the hook's keys
         if (arguments.isNotEmpty) {
@@ -345,48 +378,24 @@ class _HooksVisitor extends SimpleAstVisitor<void> {
 
           log.finest('_HooksVisitor: unnecessary keys $unnecessaryKeys');
 
-          final node = arguments.length == 2 ? arguments[1] : inv.methodName;
+          final errNode =
+              arguments.length == 2 ? arguments[1] : node.methodName;
 
           for (final key in missingKeys) {
             onMissingKeyReport(
               key.toString(),
-              node,
+              errNode,
             );
           }
 
           for (final key in unnecessaryKeys) {
             onUnnecessaryKeyReport(
               key.toString(),
-              node,
+              errNode,
             );
           }
         }
     }
-  }
-
-  @override
-  void visitVariableDeclarationStatement(VariableDeclarationStatement node) {
-    log.finer('_HooksVisitor: visitVariableDeclarationStatement($node)');
-
-    final inv = node
-        .findChild<VariableDeclarationList>()
-        ?.findChild<VariableDeclaration>()
-        ?.findChild<MethodInvocation>();
-
-    if (inv == null) return;
-
-    _visitHookInvocation(inv);
-  }
-
-  @override
-  void visitExpressionStatement(ExpressionStatement node) {
-    log.finer('_HooksVisitor: visitExpressionStatement($node)');
-
-    final inv = node.findChild<MethodInvocation>();
-
-    if (inv == null) return;
-
-    _visitHookInvocation(inv);
   }
 }
 

@@ -68,3 +68,31 @@ class _BuildVisitor<C> extends SimpleAstVisitor<void> {
     visitHandler(context, block, node.declaredElement);
   }
 }
+
+class CustomHookFunctionVisitor<C> extends SimpleAstVisitor<void> {
+  CustomHookFunctionVisitor({
+    required this.contextBuilder,
+    required this.onBuildBlock,
+  });
+
+  final C Function() contextBuilder;
+  final void Function(C context, Block node, FormalParameterList? params)
+      onBuildBlock;
+
+  @override
+  void visitFunctionDeclaration(FunctionDeclaration node) {
+    if (!node.name.name.startsWith('use') &&
+        !node.name.name.startsWith('_use')) {
+      return;
+    }
+
+    log.finer('CustomHookFunctionVisitor: visit($node)');
+
+    final expr = node.functionExpression;
+    final block = expr.findChild<BlockFunctionBody>()?.findChild<Block>();
+
+    if (block == null) return;
+
+    onBuildBlock(contextBuilder(), block, expr.parameters);
+  }
+}

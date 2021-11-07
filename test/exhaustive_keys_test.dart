@@ -138,6 +138,32 @@ void main() {
       expect(keys, ['dep']);
     });
 
+    test('report hooks in a custom hook', () async {
+      final source = '''
+        class TestWidget extends HookWidget {
+          const TestWidget({
+            Key? key,
+          }): super(key: key);
+
+          @override
+          Widget build(BuildContext context) {
+            final test = useHook('Hello');
+
+            return Text(test);
+          }
+        }
+
+        String useHook(String value) {
+          final length = value.length;
+          return useMemoized(() => 'value: ' + value + ' length: ' + length, []);
+        }
+      ''';
+
+      final keys = await _findMissingKeys(source);
+
+      expect(keys, ['value', 'length']);
+    });
+
     test('report complex dotted value', () async {
       final source = '''
         class TestWidget extends HookWidget {
