@@ -124,21 +124,24 @@ class FlutterHooksRulesPlugin extends ServerPlugin {
   ) {
     final errors = <plugin.AnalysisErrorFixes>[];
 
-    void report(LintError err) {
+    void report(LintError err, [LintFix? fix]) {
       errors.add(
         plugin.AnalysisErrorFixes(
           err.toAnalysisError(filePath, unit),
+          fixes: fix != null
+              ? [fix.toAnalysisFix(filePath, analysisResult)]
+              : null,
         ),
       );
     }
 
     findExhaustiveKeys(
       unit,
-      onMissingKeysReport: (keys, node) {
-        report(LintError.missingKeys(keys, node));
+      onMissingKeyReport: (key, node) {
+        report(LintError.missingKey(key, node));
       },
-      onUnnecessaryKeysReport: (keys, node) {
-        report(LintError.unnecessaryKeys(keys, node));
+      onUnnecessaryKeyReport: (key, node) {
+        report(LintError.unnecessaryKey(key, node));
       },
     );
 

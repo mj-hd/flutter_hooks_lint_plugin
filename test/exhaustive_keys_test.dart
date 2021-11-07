@@ -1,34 +1,33 @@
-import 'package:analyzer/dart/element/element.dart';
 import 'package:flutter_hooks_lint_plugin/src/plugin/exhaustive_keys.dart';
 import 'package:test/test.dart';
 import 'package:tuple/tuple.dart';
 
 import 'utils.dart';
 
-Future<Tuple2<List<Element>?, List<Element>?>> _find(String source) async {
+Future<Tuple2<List<String>, List<String>>> _find(String source) async {
   final unit = await compileCode(source);
 
-  var missingKeys;
-  var unnecessaryKeys;
+  var missingKeys = <String>[];
+  var unnecessaryKeys = <String>[];
 
   findExhaustiveKeys(
     unit,
-    onMissingKeysReport: (keys, node) {
-      missingKeys = keys;
+    onMissingKeyReport: (key, node) {
+      missingKeys.add(key);
     },
-    onUnnecessaryKeysReport: (keys, node) {
-      unnecessaryKeys = keys;
+    onUnnecessaryKeyReport: (key, node) {
+      unnecessaryKeys.add(key);
     },
   );
 
   return Tuple2(missingKeys, unnecessaryKeys);
 }
 
-Future<List<Element>?> _findMissingKeys(String source) async {
+Future<List<String>> _findMissingKeys(String source) async {
   return (await _find(source)).item1;
 }
 
-Future<List<Element>?> _findUnnecessaryKeys(String source) async {
+Future<List<String>> _findUnnecessaryKeys(String source) async {
   return (await _find(source)).item2;
 }
 
@@ -59,9 +58,7 @@ void main() {
 
       final keys = await _findMissingKeys(source);
 
-      expect(keys, isNotNull);
-      expect(keys!.length, 1);
-      expect(keys[0].name, 'dep');
+      expect(keys, ['dep']);
     });
 
     test('report local variable reference', () async {
@@ -88,9 +85,91 @@ void main() {
 
       final keys = await _findMissingKeys(source);
 
-      expect(keys, isNotNull);
-      expect(keys!.length, 1);
-      expect(keys[0].name, 'dep');
+      expect(keys, ['dep']);
+    });
+
+    test('report complex dotted value', () async {
+      final source = '''
+        class TestWidget extends HookWidget {
+          const TestWidget({
+            Key? key,
+          }) : super(key: key);
+
+          @override
+          Widget build(BuildContext context) {
+            final streamController = useStreamController();
+
+            useEffect(() {
+              final subscription = streamController.stream
+                  .listen(
+                     (e) => Future.microtask(
+                       () => print(e),
+                     ),
+                  );
+
+              return subscription.cancel;
+            }, []);
+
+            return Text('Hello');
+          }
+        }
+      ''';
+
+      final keys = await _findMissingKeys(source);
+
+      expect(keys, ['streamController']);
+    });
+
+    test('report optional dotted value', () async {
+      final source = '''
+        class TestWidget extends HookWidget {
+          const TestWidget({
+            Key? key,
+            this.list,
+          }) : super(key: key);
+
+          final List<String>? list;
+
+          @override
+          Widget build(BuildContext context) {
+            useEffect(() {
+              print(list?.length);
+            }, []);
+
+            return Text('Hello');
+          }
+        }
+      ''';
+
+      final keys = await _findMissingKeys(source);
+
+      expect(keys, ['list']);
+    });
+
+    test('ignore value notifier', () async {
+      final source = '''
+        class TestWidget extends HookWidget {
+          const TestWidget({
+            Key? key,
+            this.flag,
+          }) : super(key: key);
+
+          final ValueNotifier<bool> flag;
+
+          @override
+          Widget build(BuildContext context) {
+            useEffect(() {
+              flag.value = true;
+            }, [flag.value]);
+
+            return Text('Hello');
+          }
+        }
+      ''';
+
+      final keys = await _findMissingKeys(source);
+
+      expect(keys, []);
     });
 
     test('ignore useState value reference', () async {
@@ -113,7 +192,7 @@ void main() {
 
       final keys = await _findMissingKeys(source);
 
-      expect(keys, isNull);
+      expect(keys, []);
     });
 
     test('ignore useRef value reference', () async {
@@ -134,7 +213,7 @@ void main() {
 
       final keys = await _findMissingKeys(source);
 
-      expect(keys, isNull);
+      expect(keys, []);
     });
 
     test('ignore local const reference', () async {
@@ -155,7 +234,7 @@ void main() {
 
       final keys = await _findMissingKeys(source);
 
-      expect(keys, isNull);
+      expect(keys, []);
     });
 
     test('ignore top-level const reference', () async {
@@ -176,7 +255,7 @@ void main() {
 
       final keys = await _findMissingKeys(source);
 
-      expect(keys, isNull);
+      expect(keys, []);
     });
 
     test('ignore library reference', () async {
@@ -197,7 +276,7 @@ void main() {
 
       final keys = await _findMissingKeys(source);
 
-      expect(keys, isNull);
+      expect(keys, []);
     });
   });
 
@@ -222,9 +301,7 @@ void main() {
 
       final keys = await _findUnnecessaryKeys(source);
 
-      expect(keys, isNotNull);
-      expect(keys!.length, 1);
-      expect(keys[0].name, 'dep');
+      expect(keys, ['dep']);
     });
 
     test('report useState notifier reference', () async {
@@ -245,9 +322,7 @@ void main() {
 
       final keys = await _findUnnecessaryKeys(source);
 
-      expect(keys, isNotNull);
-      expect(keys!.length, 1);
-      expect(keys[0].name, 'state');
+      expect(keys, ['state']);
     });
 
     test('ignore useState value reference', () async {
@@ -270,7 +345,7 @@ void main() {
 
       final keys = await _findUnnecessaryKeys(source);
 
-      expect(keys, isNull);
+      expect(keys, []);
     });
 
     test('report useRef value reference', () async {
@@ -289,9 +364,7 @@ void main() {
 
       final keys = await _findUnnecessaryKeys(source);
 
-      expect(keys, isNotNull);
-      expect(keys!.length, 1);
-      expect(keys[0].name, 'state');
+      expect(keys, ['state']);
     });
 
     test('ignore dotted value', () async {
@@ -319,7 +392,93 @@ void main() {
 
       final keys = await _findUnnecessaryKeys(source);
 
-      expect(keys, isNull);
+      expect(keys, []);
+    });
+
+    test('ignore complex dotted value', () async {
+      final source = '''
+        class TestWidget extends HookWidget {
+          const TestWidget({
+            Key? key,
+          }) : super(key: key);
+
+          @override
+          Widget build(BuildContext context) {
+            final streamController = useStreamController();
+
+            useEffect(() {
+              final subscription = streamController.stream
+                  .listen(
+                     (e) => Future.microtask(
+                       () => print(e),
+                     ),
+                  );
+
+              return subscription.cancel;
+            }, [streamController]);
+
+            return Text('Hello');
+          }
+        }
+      ''';
+
+      final keys = await _findUnnecessaryKeys(source);
+
+      expect(keys, []);
+    });
+
+    test('ignore optional dotted value exists in keys full expression',
+        () async {
+      final source = '''
+        class TestWidget extends HookWidget {
+          const TestWidget({
+            Key? key,
+            this.list,
+          }) : super(key: key);
+
+          final List<String>? list;
+
+          @override
+          Widget build(BuildContext context) {
+            useEffect(() {
+              print(list?.length);
+            }, [list?.length]);
+
+            return Text('Hello');
+          }
+        }
+      ''';
+
+      final keys = await _findUnnecessaryKeys(source);
+
+      expect(keys, []);
+    });
+
+    test('ignore optional dotted value exists in keys short expression',
+        () async {
+      final source = '''
+        class TestWidget extends HookWidget {
+          const TestWidget({
+            Key? key,
+            this.list,
+          }) : super(key: key);
+
+          final List<String>? list;
+
+          @override
+          Widget build(BuildContext context) {
+            useEffect(() {
+              print(list?.length);
+            }, [list]);
+
+            return Text('Hello');
+          }
+        }
+      ''';
+
+      final keys = await _findUnnecessaryKeys(source);
+
+      expect(keys, []);
     });
   });
 }

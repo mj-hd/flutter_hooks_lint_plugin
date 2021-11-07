@@ -16,13 +16,13 @@ extension AstNodeFindChild on AstNode {
 }
 
 class HookWidgetVisitor<C> extends SimpleAstVisitor<void> {
-  HookWidgetVisitor(
-    this.context, {
+  HookWidgetVisitor({
+    required this.contextBuilder,
     this.onClassDeclaration,
     this.onBuildBlock,
   });
 
-  final C context;
+  final C Function() contextBuilder;
   final void Function(C context, ClassDeclaration node)? onClassDeclaration;
   final void Function(C context, Block node, ExecutableElement? elem)?
       onBuildBlock;
@@ -34,6 +34,8 @@ class HookWidgetVisitor<C> extends SimpleAstVisitor<void> {
     switch (node.extendsClause?.superclass.name.name) {
       case 'HookWidget':
       case 'HookConsumerWidget':
+        final context = contextBuilder();
+
         onClassDeclaration?.call(context, node);
 
         if (onBuildBlock != null) {

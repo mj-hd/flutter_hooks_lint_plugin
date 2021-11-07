@@ -1,6 +1,7 @@
+import 'package:analyzer/dart/analysis/results.dart';
 import 'package:analyzer/dart/ast/ast.dart';
-import 'package:analyzer/dart/element/element.dart';
 import 'package:analyzer_plugin/protocol/protocol_common.dart' as plugin;
+import 'package:analyzer_plugin/protocol/protocol_generated.dart' as plugin;
 
 class LintError {
   const LintError({
@@ -9,17 +10,17 @@ class LintError {
     required this.node,
   });
 
-  factory LintError.missingKeys(List<Element> keys, AstNode node) {
+  factory LintError.missingKey(String key, AstNode node) {
     return LintError(
-      message: "missing keys '${keys.map((e) => e.name).join(',')}'",
+      message: "missing key '$key'",
       code: 'missing_keys',
       node: node,
     );
   }
 
-  factory LintError.unnecessaryKeys(List<Element> keys, AstNode node) {
+  factory LintError.unnecessaryKey(String key, AstNode node) {
     return LintError(
-      message: "unnecessary keys '${keys.map((e) => e.name).join(',')}'",
+      message: "unnecessary key '$key'",
       code: 'unnecessary_keys',
       node: node,
     );
@@ -64,6 +65,43 @@ class LintError {
       loc.columnNumber,
       endLine: locEnd.lineNumber,
       endColumn: locEnd.columnNumber,
+    );
+  }
+}
+
+class LintFix {
+  const LintFix({
+    required this.message,
+    required this.node,
+    required this.replacement,
+  });
+
+  final String message;
+  final AstNode node;
+  final String replacement;
+
+  plugin.PrioritizedSourceChange toAnalysisFix(
+    String file,
+    ResolvedUnitResult analysisResult,
+  ) {
+    return plugin.PrioritizedSourceChange(
+      1,
+      plugin.SourceChange(
+        message,
+        edits: [
+          plugin.SourceFileEdit(
+            file,
+            analysisResult.libraryElement.source.modificationStamp,
+            edits: [
+              plugin.SourceEdit(
+                node.beginToken.charOffset,
+                node.length,
+                replacement,
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }
