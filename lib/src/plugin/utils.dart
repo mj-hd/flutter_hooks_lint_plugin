@@ -14,7 +14,7 @@ class LintError {
   factory LintError.missingKey(String key, AstNode node) {
     return LintError(
       message: "missing key '$key'",
-      code: 'missing_keys',
+      code: 'exhaustive_keys',
       node: node,
     );
   }
@@ -22,7 +22,7 @@ class LintError {
   factory LintError.unnecessaryKey(String key, AstNode node) {
     return LintError(
       message: "unnecessary key '$key'",
-      code: 'unnecessary_keys',
+      code: 'exhaustive_keys',
       node: node,
     );
   }
