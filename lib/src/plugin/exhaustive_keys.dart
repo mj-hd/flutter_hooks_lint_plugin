@@ -318,9 +318,15 @@ class _HooksVisitor extends RecursiveAstVisitor<void> {
 
         // find identifiers in the hook's keys
         if (arguments.isNotEmpty) {
-          // useEffect(() { ... });
+          // useMemoized(() => ...);
           if (arguments.length == 1) {
             log.finest('_HooksVisitor: hooks without keys');
+
+            // useEffect(() { ... });
+            if (node.methodName.name == 'useEffect') {
+              log.finest('_HooksVisitor: useEffect without keys');
+              return;
+            }
           }
 
           // useEffect(() { ... }, ...);

@@ -112,6 +112,56 @@ void main() {
       expect(keys, ['dep']);
     });
 
+    test('report useMemoized without keys', () async {
+      final source = '''
+        class TestWidget extends HookWidget {
+          const TestWidget({
+            Key? key,
+            required this.dep,
+          }): super(key: key);
+
+          final String dep;
+
+          @override
+          Widget build(BuildContext context) {
+            final test = useMemoized(() => dep);
+
+            return Text('TestWidget');
+          }
+        }
+      ''';
+
+      final keys = await _findMissingKeys(source);
+
+      expect(keys, ['dep']);
+    });
+
+    test('ignore useEffect without keys', () async {
+      final source = '''
+        class TestWidget extends HookWidget {
+          const TestWidget({
+            Key? key,
+            required this.dep,
+          }): super(key: key);
+
+          final String dep;
+
+          @override
+          Widget build(BuildContext context) {
+            useEffect(() {
+              print(dep);
+            });
+
+            return Text('TestWidget');
+          }
+        }
+      ''';
+
+      final keys = await _findMissingKeys(source);
+
+      expect(keys, []);
+    });
+
     test('report useCallback', () async {
       final source = '''
         class TestWidget extends HookWidget {
