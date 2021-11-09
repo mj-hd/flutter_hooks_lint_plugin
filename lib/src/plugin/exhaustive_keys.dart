@@ -2,6 +2,7 @@ import 'package:analyzer/dart/ast/ast.dart';
 import 'package:analyzer/dart/ast/visitor.dart';
 import 'package:analyzer/dart/element/element.dart';
 import 'package:flutter_hooks_lint_plugin/src/plugin/hook_widget_visitor.dart';
+import 'package:flutter_hooks_lint_plugin/src/plugin/utils.dart';
 import 'package:logging/logging.dart';
 
 final log = Logger('exhaustive_keys');
@@ -85,27 +86,30 @@ class Key {
     );
   }
 
+  static final _acceptCache = Cache<int, bool>(1000);
+
   /// check whether the other Key is subset of this Key
-  bool accepts(Key other) {
-    if (staticElements.first.id != other.staticElements.first.id) {
-      return false;
-    }
+  bool accepts(Key other) =>
+      _acceptCache.doCache(hashCode ^ other.hashCode, () {
+        if (staticElements.first.id != other.staticElements.first.id) {
+          return false;
+        }
 
-    if (idents.length < other.idents.length) {
-      return false;
-    }
+        if (idents.length < other.idents.length) {
+          return false;
+        }
 
-    // FIXME: In some cases, the same two identifiers return null or element by context.
-    //   To handle this, here compares identifier's name only.
-    for (var i = 1; i < other.idents.length; i++) {
-      final l = idents[i];
-      final r = other.idents[i];
+        // FIXME: In some cases, the same two identifiers return null or element by context.
+        //   To handle this, here compares identifier's name only.
+        for (var i = 1; i < other.idents.length; i++) {
+          final l = idents[i];
+          final r = other.idents[i];
 
-      if (l.name != r.name) return false;
-    }
+          if (l.name != r.name) return false;
+        }
 
-    return true;
-  }
+        return true;
+      });
 
   /// shorten the Key
   Key toBaseKey() {
@@ -134,9 +138,19 @@ class Key {
 
 class _Context {
   final List<FieldElement> _classFields = [];
+  final List<PropertyAccessorElement> _classGetterFields = [];
   final List<VariableElement> _localVariables = [];
   final List<VariableElement> _stateVariables = [];
   final List<ParameterElement> _params = [];
+
+  bool get isEmpty =>
+      _classFields.isEmpty &&
+      _classGetterFields.isEmpty &&
+      _localVariables.isEmpty &&
+      _stateVariables.isEmpty &&
+      _params.isEmpty;
+
+  bool get isNotEmpty => !isEmpty;
 
   void addLocalVariable(VariableElement variable) {
     log.finer('_Context: addLocalVariable($variable)');
@@ -158,10 +172,13 @@ class _Context {
       return;
     }
 
-    _classFields.addAll(
-      klass.declaredElement!.fields.where(
-        (elem) => !elem.isConst,
-      ),
+    final fields = klass.declaredElement!.fields.where(
+      (elem) => !elem.isConst,
+    );
+
+    _classFields.addAll(fields);
+    _classGetterFields.addAll(
+      fields.map((e) => e.getter).whereType<PropertyAccessorElement>().toList(),
     );
   }
 
@@ -177,49 +194,52 @@ class _Context {
     );
   }
 
+  static final _buildVariableCache = Cache<int, bool>(1000);
+
   /// returns whether the variable is a build-related variable (class fields, local variables, ...)
-  bool isBuildVariable(Key variable) {
-    log.finer('_Context: isBuildVarialbe($variable)');
+  bool isBuildVariable(Key variable) =>
+      _buildVariableCache.doCache(variable.hashCode, () {
+        log.finer('_Context: isBuildVarialbe($variable)');
 
-    // consider reference like 'state.value' as a build variable ('state' is not)
-    if (variable.staticElements.length >= 2) {
-      final first = variable.staticElements.first;
+        // consider reference like 'state.value' as a build variable ('state' is not)
+        if (variable.staticElements.length >= 2) {
+          final first = variable.staticElements.first;
 
-      if (_elementContains(_stateVariables, first)) {
-        log.finest('_Context: isBuildVarialbe($variable) => state value');
-        return true;
-      }
-    }
+          if (_elementContains(_stateVariables, first)) {
+            log.finest('_Context: isBuildVarialbe($variable) => state value');
+            return true;
+          }
+        }
 
-    final classFieldGetters =
-        _classFields.map((e) => e.getter).whereType<Element>().toList();
+        for (final element in variable.staticElements) {
+          if (_elementContains(_localVariables, element)) {
+            log.finest(
+                '_Context: isBuildVarialbe($variable) => local variable');
+            return true;
+          }
 
-    for (final element in variable.staticElements) {
-      if (_elementContains(_localVariables, element)) {
-        log.finest('_Context: isBuildVarialbe($variable) => local variable');
-        return true;
-      }
+          if (_elementContains(_params, element)) {
+            log.finest(
+                '_Context: isBuildVariable($variable) => function param');
+            return true;
+          }
 
-      if (_elementContains(_params, element)) {
-        log.finest('_Context: isBuildVariable($variable) => function param');
-        return true;
-      }
+          if (_elementContains(_classFields, element)) {
+            log.finest('_Context: isBuildVariable($variable) => class field');
+            return true;
+          }
 
-      if (_elementContains(_classFields, element)) {
-        log.finest('_Context: isBuildVariable($variable) => class field');
-        return true;
-      }
+          if (_elementContains(_classGetterFields, element)) {
+            log.finest(
+                '_Context: isBuildVariable($variable) => class getter field');
+            return true;
+          }
+        }
 
-      if (_elementContains(classFieldGetters, element)) {
         log.finest(
-            '_Context: isBuildVariable($variable) => class getter field');
-        return true;
-      }
-    }
-
-    log.finest('_Context: isBuildVariable($variable) => not build variable');
-    return false;
-  }
+            '_Context: isBuildVariable($variable) => not build variable');
+        return false;
+      });
 
   bool hasStateVariable(List<Identifier> idents) {
     if (idents.isEmpty) return false;
@@ -351,16 +371,18 @@ class _HooksVisitor extends RecursiveAstVisitor<void> {
             }
           }
 
-          // find identifiers in the hook body
-          final visitor = _KeysIdentifierVisitor(
-            context: context,
-            onlyBuildVaribles: true,
-          );
+          if (context.isNotEmpty) {
+            // find identifiers in the hook body
+            final visitor = _KeysIdentifierVisitor(
+              context: context,
+              onlyBuildVaribles: true,
+            );
 
-          final body = arguments[0];
-          body.visitChildren(visitor);
+            final body = arguments[0];
+            body.visitChildren(visitor);
 
-          expectedKeys.addAll(visitor.keys);
+            expectedKeys.addAll(visitor.keys);
+          }
 
           log.finest('_HooksVisitor: expected keys $expectedKeys');
 

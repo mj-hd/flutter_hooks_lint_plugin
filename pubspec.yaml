@@ -14,3 +14,4 @@ dev_dependencies:
   test: 1.17.12
   tuple: 2.0.0
   flutter_hooks: 0.18.0
+  benchmark_harness: 2.0.0
