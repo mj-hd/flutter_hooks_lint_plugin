@@ -152,6 +152,9 @@ class FlutterHooksRulesPlugin extends ServerPlugin {
       onUnnecessaryKeyReport: (key, node) {
         report(LintError.unnecessaryKey(key, node));
       },
+      onFunctionKeyReport: (key, node) {
+        report(LintError.functionKey(key, node));
+      },
     );
 
     findRulesOfHooks(

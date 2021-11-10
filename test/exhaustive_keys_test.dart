@@ -4,11 +4,14 @@ import 'package:tuple/tuple.dart';
 
 import 'utils.dart';
 
-Future<Tuple2<List<String>, List<String>>> _find(String source) async {
+typedef Result = Tuple3<List<String>, List<String>, List<String>>;
+
+Future<Result> _find(String source) async {
   final unit = await compileCode(source);
 
   var missingKeys = <String>[];
   var unnecessaryKeys = <String>[];
+  var functionKeys = <String>[];
 
   findExhaustiveKeys(
     unit,
@@ -18,9 +21,12 @@ Future<Tuple2<List<String>, List<String>>> _find(String source) async {
     onUnnecessaryKeyReport: (key, node) {
       unnecessaryKeys.add(key);
     },
+    onFunctionKeyReport: (key, node) {
+      functionKeys.add(key);
+    },
   );
 
-  return Tuple2(missingKeys, unnecessaryKeys);
+  return Tuple3(missingKeys, unnecessaryKeys, functionKeys);
 }
 
 Future<List<String>> _findMissingKeys(String source) async {
@@ -29,6 +35,10 @@ Future<List<String>> _findMissingKeys(String source) async {
 
 Future<List<String>> _findUnnecessaryKeys(String source) async {
   return (await _find(source)).item2;
+}
+
+Future<List<String>> _findFunctionKeys(String source) async {
+  return (await _find(source)).item3;
 }
 
 void main() {
@@ -76,6 +86,35 @@ void main() {
 
             useEffect(() {
               print(dep);
+            }, []);
+
+            return Text('TestWidget');
+          }
+        }
+      ''';
+
+      final keys = await _findMissingKeys(source);
+
+      expect(keys, ['dep']);
+    });
+
+    test('report local function reference', () async {
+      final source = '''
+        import 'dart:math';
+
+        class TestWidget extends HookWidget {
+          const TestWidget({
+            Key? key,
+          }): super(key: key);
+
+          @override
+          Widget build(BuildContext context) {
+            void dep() {
+              print('hello');
+            }
+
+            useEffect(() {
+              dep();
             }, []);
 
             return Text('TestWidget');
@@ -605,6 +644,35 @@ void main() {
       final keys = await _findUnnecessaryKeys(source);
 
       expect(keys, []);
+    });
+  });
+
+  group('function keys', () {
+    test('report', () async {
+      final source = '''
+        class TestWidget extends HookWidget {
+          const TestWidget({
+            Key? key,
+          }) : super(key: key);
+
+          @override
+          Widget build(BuildContext context) {
+            void listener() {
+              print('hello');
+            }
+
+            useEffect(() {
+              listener();
+            }, [listener]);
+
+            return Text('Hello');
+          }
+        }
+      ''';
+
+      final keys = await _findFunctionKeys(source);
+
+      expect(keys, ['listener']);
     });
   });
 }

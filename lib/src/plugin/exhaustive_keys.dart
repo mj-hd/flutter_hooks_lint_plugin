@@ -16,18 +16,24 @@ void findExhaustiveKeys(
   CompilationUnit unit, {
   required ExhaustiveKeysReportCallback onMissingKeyReport,
   required ExhaustiveKeysReportCallback onUnnecessaryKeyReport,
+  required ExhaustiveKeysReportCallback onFunctionKeyReport,
 }) {
   log.finer('findExhaustiveKeys');
 
   void onBuildBlock(_Context context, node) {
-    final variableDeclarationVisitor = _LocalVariableVisitor(context: context);
+    final localFunctionVisitor = _LocalFunctionVisitor(context: context);
 
-    node.visitChildren(variableDeclarationVisitor);
+    node.visitChildren(localFunctionVisitor);
+
+    final localVariableVisitor = _LocalVariableVisitor(context: context);
+
+    node.visitChildren(localVariableVisitor);
 
     final hooksVisitor = _HooksVisitor(
       context: context,
       onMissingKeyReport: onMissingKeyReport,
       onUnnecessaryKeyReport: onUnnecessaryKeyReport,
+      onFunctionKeyReport: onFunctionKeyReport,
     );
 
     node.visitChildren(hooksVisitor);
@@ -57,31 +63,44 @@ void findExhaustiveKeys(
   );
 }
 
+enum KeyKind {
+  unknown,
+  classField,
+  functionParam,
+  localVariable,
+  localFunction,
+  stateVariable,
+}
+
 /// Key represents complex identifier like 'hoge.foo.bar'
 class Key {
-  Key(List<SimpleIdentifier> idents, bool isStateValue)
+  Key(List<SimpleIdentifier> idents, KeyKind kind)
       : _idents = idents,
-        _isStateValue = isStateValue,
+        _kind = kind,
         assert(idents.isNotEmpty);
 
-  factory Key.withContext(_Context context, List<SimpleIdentifier> idents) =>
-      Key(
-        idents,
-        context.hasStateVariable(idents),
-      );
+  factory Key.withContext(
+    _Context context,
+    List<SimpleIdentifier> idents,
+  ) =>
+      Key(idents, context.inferKind(idents));
 
   final List<SimpleIdentifier> _idents;
   List<SimpleIdentifier> get idents => _idents;
 
-  final bool _isStateValue;
-  bool get isStateValue => _isStateValue;
+  final KeyKind _kind;
+  KeyKind get kind => _kind;
 
-  /// iterates over staticElements corresponding to the identifiers
-  Iterable<Element> get staticElements =>
+  Element? get rootElement => _idents.first.staticElement;
+
+  /// returns whether the variable is a build-related variable (class fields, local variables, ...)
+  bool get isBuildVariable => kind != KeyKind.unknown;
+
+  Iterable<Element> get _staticElements =>
       _idents.map((i) => i.staticElement).whereType<Element>();
 
-  bool hasElement(Element other) {
-    return staticElements.any(
+  bool _hasElement(Element other) {
+    return _staticElements.any(
       (l) => l.id == other.id,
     );
   }
@@ -91,7 +110,9 @@ class Key {
   /// check whether the other Key is subset of this Key
   bool accepts(Key other) =>
       _acceptCache.doCache(hashCode ^ other.hashCode, () {
-        if (staticElements.first.id != other.staticElements.first.id) {
+        if (rootElement == null) return false;
+
+        if (rootElement?.id != other.rootElement?.id) {
           return false;
         }
 
@@ -114,11 +135,17 @@ class Key {
   /// shorten the Key
   Key toBaseKey() {
     // if the Key is a state value, keep first 2 identifiers (e.g. state.value.foo => state.value)
-    if (isStateValue) {
-      return Key(idents.sublist(0, 2), true);
+    if (kind == KeyKind.stateVariable) {
+      return Key(
+        idents.sublist(0, 2),
+        kind,
+      );
     }
 
-    return Key([idents.first], false);
+    return Key(
+      [idents.first],
+      kind,
+    );
   }
 
   @override
@@ -129,17 +156,19 @@ class Key {
   @override
   bool operator ==(Object other) =>
       other is Key &&
-      _idents.length == other.idents.length &&
-      staticElements.every(other.hasElement);
+      kind == other.kind &&
+      idents.length == other.idents.length &&
+      _staticElements.every(other._hasElement);
 
   @override
-  int get hashCode => staticElements.fold(0, (prev, e) => prev ^ e.hashCode);
+  int get hashCode => _staticElements.fold(0, (prev, e) => prev ^ e.hashCode);
 }
 
 class _Context {
   final List<FieldElement> _classFields = [];
   final List<PropertyAccessorElement> _classGetterFields = [];
   final List<VariableElement> _localVariables = [];
+  final List<Element> _localFunctions = [];
   final List<VariableElement> _stateVariables = [];
   final List<ParameterElement> _params = [];
 
@@ -147,6 +176,7 @@ class _Context {
       _classFields.isEmpty &&
       _classGetterFields.isEmpty &&
       _localVariables.isEmpty &&
+      _localFunctions.isEmpty &&
       _stateVariables.isEmpty &&
       _params.isEmpty;
 
@@ -156,6 +186,12 @@ class _Context {
     log.finer('_Context: addLocalVariable($variable)');
 
     _localVariables.add(variable);
+  }
+
+  void addFunctionDeclaration(Element func) {
+    log.finer('_Context: addLocalFunction($func)');
+
+    _localFunctions.add(func);
   }
 
   void addStateVariable(VariableElement variable) {
@@ -194,57 +230,58 @@ class _Context {
     );
   }
 
-  static final _buildVariableCache = Cache<int, bool>(1000);
+  static final _kindCache = Cache<int, KeyKind>(1000);
 
-  /// returns whether the variable is a build-related variable (class fields, local variables, ...)
-  bool isBuildVariable(Key variable) =>
-      _buildVariableCache.doCache(variable.hashCode, () {
-        log.finer('_Context: isBuildVarialbe($variable)');
+  KeyKind inferKind(List<SimpleIdentifier> idents) {
+    final staticElements =
+        idents.map((i) => i.staticElement).whereType<Element>();
 
-        // consider reference like 'state.value' as a build variable ('state' is not)
-        if (variable.staticElements.length >= 2) {
-          final first = variable.staticElements.first;
+    final hashCode =
+        staticElements.fold<int>(0, (prev, e) => prev ^ e.hashCode);
 
-          if (_elementContains(_stateVariables, first)) {
-            log.finest('_Context: isBuildVarialbe($variable) => state value');
-            return true;
-          }
+    return _kindCache.doCache(hashCode, () {
+      log.finer('_Context: inferKind($idents)');
+
+      // consider reference like 'state.value' as a build variable ('state' is not)
+      if (staticElements.length >= 2) {
+        final first = staticElements.first;
+
+        if (_elementContains(_stateVariables, first)) {
+          log.finest('_Context: inferKind($idents) => state value');
+          return KeyKind.stateVariable;
+        }
+      }
+
+      for (final element in staticElements) {
+        if (_elementContains(_localVariables, element)) {
+          log.finest('_Context: inferKind($idents) => local variable');
+          return KeyKind.localVariable;
         }
 
-        for (final element in variable.staticElements) {
-          if (_elementContains(_localVariables, element)) {
-            log.finest(
-                '_Context: isBuildVarialbe($variable) => local variable');
-            return true;
-          }
-
-          if (_elementContains(_params, element)) {
-            log.finest(
-                '_Context: isBuildVariable($variable) => function param');
-            return true;
-          }
-
-          if (_elementContains(_classFields, element)) {
-            log.finest('_Context: isBuildVariable($variable) => class field');
-            return true;
-          }
-
-          if (_elementContains(_classGetterFields, element)) {
-            log.finest(
-                '_Context: isBuildVariable($variable) => class getter field');
-            return true;
-          }
+        if (_elementContains(_localFunctions, element)) {
+          log.finest('_Context: inferKind($idents) => local function');
+          return KeyKind.localFunction;
         }
 
-        log.finest(
-            '_Context: isBuildVariable($variable) => not build variable');
-        return false;
-      });
+        if (_elementContains(_params, element)) {
+          log.finest('_Context: inferKind($idents) => function param');
+          return KeyKind.functionParam;
+        }
 
-  bool hasStateVariable(List<Identifier> idents) {
-    if (idents.isEmpty) return false;
-    final element = idents.first.staticElement;
-    return element != null && _elementContains(_stateVariables, element);
+        if (_elementContains(_classFields, element)) {
+          log.finest('_Context: inferKind($idents) => class field');
+          return KeyKind.classField;
+        }
+
+        if (_elementContains(_classGetterFields, element)) {
+          log.finest('_Context: inferKind($idents) => class getter field');
+          return KeyKind.classField;
+        }
+      }
+
+      log.finest('_Context: inferKind($idents) => unknown');
+      return KeyKind.unknown;
+    });
   }
 
   bool _elementContains(List<Element> list, Element target) {
@@ -309,17 +346,38 @@ class _LocalVariableVisitor extends SimpleAstVisitor<void> {
   }
 }
 
+class _LocalFunctionVisitor extends SimpleAstVisitor<void> {
+  _LocalFunctionVisitor({
+    required this.context,
+  });
+
+  final _Context context;
+
+  @override
+  void visitFunctionDeclarationStatement(FunctionDeclarationStatement node) {
+    log.finer('_LocalFunctionVisitor: visit($node)');
+
+    final element = node.functionDeclaration.declaredElement;
+
+    if (element != null) {
+      context.addFunctionDeclaration(element);
+    }
+  }
+}
+
 class _HooksVisitor extends RecursiveAstVisitor<void> {
   _HooksVisitor({
     required this.context,
     required this.onMissingKeyReport,
     required this.onUnnecessaryKeyReport,
+    required this.onFunctionKeyReport,
   });
 
   final _Context context;
 
   final ExhaustiveKeysReportCallback onMissingKeyReport;
   final ExhaustiveKeysReportCallback onUnnecessaryKeyReport;
+  final ExhaustiveKeysReportCallback onFunctionKeyReport;
 
   @override
   void visitMethodInvocation(MethodInvocation node) {
@@ -422,6 +480,15 @@ class _HooksVisitor extends RecursiveAstVisitor<void> {
               errNode,
             );
           }
+
+          for (final key in actualKeys) {
+            if (key.kind == KeyKind.localFunction) {
+              onFunctionKeyReport(
+                key.toString(),
+                errNode,
+              );
+            }
+          }
         }
     }
   }
@@ -480,9 +547,7 @@ class _KeysIdentifierVisitor extends RecursiveAstVisitor<void> {
     }
 
     if (onlyBuildVaribles) {
-      final isBuildVariable = context.isBuildVariable(key);
-
-      if (!isBuildVariable) {
+      if (!key.isBuildVariable) {
         log.finest(
             '_KeysIdentifierVisitor: _visitKey($key) => is build variable');
         return;

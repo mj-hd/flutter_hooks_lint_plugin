@@ -13,10 +13,13 @@ class LintError {
     required this.node,
   });
 
+  static final String _exhaustiveKeysCode = 'exhaustive_keys';
+  static final String _nestedHooks = 'nested_hooks';
+
   factory LintError.missingKey(String key, AstNode node) {
     return LintError(
       message: "missing key '$key'",
-      code: 'exhaustive_keys',
+      code: _exhaustiveKeysCode,
       node: node,
     );
   }
@@ -24,7 +27,15 @@ class LintError {
   factory LintError.unnecessaryKey(String key, AstNode node) {
     return LintError(
       message: "unnecessary key '$key'",
-      code: 'exhaustive_keys',
+      code: _exhaustiveKeysCode,
+      node: node,
+    );
+  }
+
+  factory LintError.functionKey(String functionName, AstNode node) {
+    return LintError(
+      message: "wrap '$functionName' with useCallback",
+      code: _exhaustiveKeysCode,
       node: node,
     );
   }
@@ -32,7 +43,7 @@ class LintError {
   factory LintError.nestedHooks(String hookName, AstNode node) {
     return LintError(
       message: "avoid nested use of '$hookName'",
-      code: 'nested_hooks',
+      code: _nestedHooks,
       node: node,
     );
   }
