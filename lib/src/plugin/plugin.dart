@@ -11,7 +11,8 @@ import 'package:analyzer/src/dart/analysis/driver_based_analysis_context.dart';
 import 'package:analyzer_plugin/protocol/protocol_generated.dart' as plugin;
 import 'package:flutter_hooks_lint_plugin/src/plugin/exhaustive_keys.dart';
 import 'package:flutter_hooks_lint_plugin/src/plugin/rules_of_hooks.dart';
-import 'package:flutter_hooks_lint_plugin/src/plugin/utils.dart';
+import 'package:flutter_hooks_lint_plugin/src/plugin/utils/supression.dart';
+import 'package:flutter_hooks_lint_plugin/src/plugin/utils/lint_error.dart';
 
 class FlutterHooksRulesPlugin extends ServerPlugin {
   FlutterHooksRulesPlugin(ResourceProvider? provider) : super(provider);
