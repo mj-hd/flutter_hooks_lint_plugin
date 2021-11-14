@@ -147,13 +147,13 @@ class FlutterHooksRulesPlugin extends ServerPlugin {
 
     findExhaustiveKeys(
       unit,
-      onMissingKeyReport: (key, node) {
-        report(LintError.missingKey(key, node));
+      onMissingKeyReport: (key, kind, node) {
+        report(LintError.missingKey(key, kind, node));
       },
-      onUnnecessaryKeyReport: (key, node) {
-        report(LintError.unnecessaryKey(key, node));
+      onUnnecessaryKeyReport: (key, kind, node) {
+        report(LintError.unnecessaryKey(key, kind, node));
       },
-      onFunctionKeyReport: (key, node) {
+      onFunctionKeyReport: (key, _, node) {
         report(LintError.functionKey(key, node));
       },
     );

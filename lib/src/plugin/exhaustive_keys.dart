@@ -8,8 +8,9 @@ import 'package:logging/logging.dart';
 final log = Logger('exhaustive_keys');
 
 typedef ExhaustiveKeysReportCallback = void Function(
-  String,
-  AstNode,
+  String keyName,
+  String? kind,
+  AstNode errNode,
 );
 
 void findExhaustiveKeys(
@@ -70,6 +71,28 @@ enum KeyKind {
   localVariable,
   localFunction,
   stateVariable,
+  stateValue,
+}
+
+extension KeyKindExt on KeyKind {
+  String? toReadableString() {
+    switch (this) {
+      case KeyKind.unknown:
+        return null;
+      case KeyKind.classField:
+        return 'class field';
+      case KeyKind.functionParam:
+        return 'function parameter';
+      case KeyKind.localVariable:
+        return 'local variable';
+      case KeyKind.localFunction:
+        return 'local function';
+      case KeyKind.stateVariable:
+        return 'state variable';
+      case KeyKind.stateValue:
+        return 'state value';
+    }
+  }
 }
 
 /// Key represents complex identifier like 'hoge.foo.bar'
@@ -94,7 +117,8 @@ class Key {
   Element? get rootElement => _idents.first.staticElement;
 
   /// returns whether the variable is a build-related variable (class fields, local variables, ...)
-  bool get isBuildVariable => kind != KeyKind.unknown;
+  bool get isBuildVariable =>
+      kind != KeyKind.stateVariable && kind != KeyKind.unknown;
 
   Iterable<Element> get _staticElements =>
       _idents.map((i) => i.staticElement).whereType<Element>();
@@ -105,7 +129,7 @@ class Key {
     );
   }
 
-  static final _acceptCache = Cache<int, bool>(1000);
+  final _acceptCache = Cache<int, bool>(1000);
 
   /// check whether the other Key is subset of this Key
   bool accepts(Key other) =>
@@ -135,7 +159,7 @@ class Key {
   /// shorten the Key
   Key toBaseKey() {
     // if the Key is a state value, keep first 2 identifiers (e.g. state.value.foo => state.value)
-    if (kind == KeyKind.stateVariable) {
+    if (kind == KeyKind.stateValue) {
       return Key(
         idents.sublist(0, 2),
         kind,
@@ -230,7 +254,7 @@ class _Context {
     );
   }
 
-  static final _kindCache = Cache<int, KeyKind>(1000);
+  final _kindCache = Cache<int, KeyKind>(1000);
 
   KeyKind inferKind(List<SimpleIdentifier> idents) {
     final staticElements =
@@ -242,12 +266,15 @@ class _Context {
     return _kindCache.doCache(hashCode, () {
       log.finer('_Context: inferKind($idents)');
 
-      // consider reference like 'state.value' as a build variable ('state' is not)
-      if (staticElements.length >= 2) {
-        final first = staticElements.first;
+      if (staticElements.isEmpty) return KeyKind.unknown;
 
-        if (_elementContains(_stateVariables, first)) {
+      if (_elementContains(_stateVariables, staticElements.first)) {
+        // consider reference like 'state.value' as a build variable ('state' is not)
+        if (staticElements.length >= 2) {
           log.finest('_Context: inferKind($idents) => state value');
+          return KeyKind.stateValue;
+        } else {
+          log.finest('_Context: inferKind($idents) => state variable');
           return KeyKind.stateVariable;
         }
       }
@@ -470,6 +497,7 @@ class _HooksVisitor extends RecursiveAstVisitor<void> {
           for (final key in missingKeys) {
             onMissingKeyReport(
               key.toString(),
+              key.kind.toReadableString(),
               errNode,
             );
           }
@@ -477,6 +505,7 @@ class _HooksVisitor extends RecursiveAstVisitor<void> {
           for (final key in unnecessaryKeys) {
             onUnnecessaryKeyReport(
               key.toString(),
+              key.kind.toReadableString(),
               errNode,
             );
           }
@@ -485,6 +514,7 @@ class _HooksVisitor extends RecursiveAstVisitor<void> {
             if (key.kind == KeyKind.localFunction) {
               onFunctionKeyReport(
                 key.toString(),
+                key.kind.toReadableString(),
                 errNode,
               );
             }

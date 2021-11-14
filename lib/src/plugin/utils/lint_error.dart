@@ -13,25 +13,33 @@ class LintError {
   static final String _exhaustiveKeysCode = 'exhaustive_keys';
   static final String _nestedHooks = 'nested_hooks';
 
-  factory LintError.missingKey(String key, AstNode node) {
+  factory LintError.missingKey(String key, String? kind, AstNode node) {
     return LintError(
-      message: "missing key '$key'",
+      message: "Missing key '$key' " +
+          (kind != null ? '($kind) ' : '') +
+          'found. Add the key, or ignore this line. ',
       code: _exhaustiveKeysCode,
       node: node,
     );
   }
 
-  factory LintError.unnecessaryKey(String key, AstNode node) {
+  factory LintError.unnecessaryKey(String key, String? kind, AstNode node) {
     return LintError(
-      message: "unnecessary key '$key'",
+      message: "Unnecessary key '$key' " +
+          (kind != null ? '($kind) ' : '') +
+          'found. Remove the key, or ignore this line.',
       code: _exhaustiveKeysCode,
       node: node,
     );
   }
 
-  factory LintError.functionKey(String functionName, AstNode node) {
+  factory LintError.functionKey(
+    String functionName,
+    AstNode node,
+  ) {
     return LintError(
-      message: "wrap '$functionName' with useCallback",
+      message:
+          "'$functionName' changes on every re-build. Move its definition inside the hook, or wrap with useCallback.",
       code: _exhaustiveKeysCode,
       node: node,
     );
@@ -39,7 +47,8 @@ class LintError {
 
   factory LintError.nestedHooks(String hookName, AstNode node) {
     return LintError(
-      message: "avoid nested use of '$hookName'",
+      message:
+          'Avoid nested use of $hookName. Hooks must be used in top-level scope of the build function.',
       code: _nestedHooks,
       node: node,
     );

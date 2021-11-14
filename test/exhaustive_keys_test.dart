@@ -1,44 +1,64 @@
 import 'package:flutter_hooks_lint_plugin/src/plugin/exhaustive_keys.dart';
 import 'package:test/test.dart';
-import 'package:tuple/tuple.dart';
 
 import 'utils.dart';
 
-typedef Result = Tuple3<List<String>, List<String>, List<String>>;
+class _FoundKey {
+  _FoundKey(this.name, this.kind);
 
-Future<Result> _find(String source) async {
+  final String name;
+  final String? kind;
+
+  @override
+  String toString() {
+    return 'Key $name $kind';
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      other is _FoundKey && name == other.name && kind == other.kind;
+
+  @override
+  int get hashCode => name.hashCode ^ kind.hashCode;
+}
+
+class _TestResult {
+  final missingKeys = <_FoundKey>[];
+  final unnecessaryKeys = <_FoundKey>[];
+  final functionKeys = <_FoundKey>[];
+}
+
+Future<_TestResult> _find(String source) async {
   final unit = await compileCode(source);
 
-  var missingKeys = <String>[];
-  var unnecessaryKeys = <String>[];
-  var functionKeys = <String>[];
+  final result = _TestResult();
 
   findExhaustiveKeys(
     unit,
-    onMissingKeyReport: (key, node) {
-      missingKeys.add(key);
+    onMissingKeyReport: (key, kind, node) {
+      result.missingKeys.add(_FoundKey(key, kind));
     },
-    onUnnecessaryKeyReport: (key, node) {
-      unnecessaryKeys.add(key);
+    onUnnecessaryKeyReport: (key, kind, node) {
+      result.unnecessaryKeys.add(_FoundKey(key, kind));
     },
-    onFunctionKeyReport: (key, node) {
-      functionKeys.add(key);
+    onFunctionKeyReport: (key, kind, node) {
+      result.functionKeys.add(_FoundKey(key, kind));
     },
   );
 
-  return Tuple3(missingKeys, unnecessaryKeys, functionKeys);
+  return result;
 }
 
-Future<List<String>> _findMissingKeys(String source) async {
-  return (await _find(source)).item1;
+Future<List<_FoundKey>> _findMissingKeys(String source) async {
+  return (await _find(source)).missingKeys;
 }
 
-Future<List<String>> _findUnnecessaryKeys(String source) async {
-  return (await _find(source)).item2;
+Future<List<_FoundKey>> _findUnnecessaryKeys(String source) async {
+  return (await _find(source)).unnecessaryKeys;
 }
 
-Future<List<String>> _findFunctionKeys(String source) async {
-  return (await _find(source)).item3;
+Future<List<_FoundKey>> _findFunctionKeys(String source) async {
+  return (await _find(source)).functionKeys;
 }
 
 void main() {
@@ -68,7 +88,7 @@ void main() {
 
       final keys = await _findMissingKeys(source);
 
-      expect(keys, ['dep']);
+      expect(keys, [_FoundKey('dep', 'class field')]);
     });
 
     test('report local variable reference', () async {
@@ -95,7 +115,7 @@ void main() {
 
       final keys = await _findMissingKeys(source);
 
-      expect(keys, ['dep']);
+      expect(keys, [_FoundKey('dep', 'local variable')]);
     });
 
     test('report local function reference', () async {
@@ -124,7 +144,7 @@ void main() {
 
       final keys = await _findMissingKeys(source);
 
-      expect(keys, ['dep']);
+      expect(keys, [_FoundKey('dep', 'local function')]);
     });
 
     test('report useMemoized', () async {
@@ -148,7 +168,7 @@ void main() {
 
       final keys = await _findMissingKeys(source);
 
-      expect(keys, ['dep']);
+      expect(keys, [_FoundKey('dep', 'class field')]);
     });
 
     test('report useMemoized without keys', () async {
@@ -172,7 +192,7 @@ void main() {
 
       final keys = await _findMissingKeys(source);
 
-      expect(keys, ['dep']);
+      expect(keys, [_FoundKey('dep', 'class field')]);
     });
 
     test('ignore useEffect without keys', () async {
@@ -224,7 +244,7 @@ void main() {
 
       final keys = await _findMissingKeys(source);
 
-      expect(keys, ['dep']);
+      expect(keys, [_FoundKey('dep', 'class field')]);
     });
 
     test('report hooks in a custom hook', () async {
@@ -250,7 +270,10 @@ void main() {
 
       final keys = await _findMissingKeys(source);
 
-      expect(keys, ['value', 'length']);
+      expect(keys, [
+        _FoundKey('value', 'function parameter'),
+        _FoundKey('length', 'local variable'),
+      ]);
     });
 
     test('report complex dotted value', () async {
@@ -282,7 +305,7 @@ void main() {
 
       final keys = await _findMissingKeys(source);
 
-      expect(keys, ['streamController']);
+      expect(keys, [_FoundKey('streamController', 'local variable')]);
     });
 
     test('report optional dotted value', () async {
@@ -308,7 +331,7 @@ void main() {
 
       final keys = await _findMissingKeys(source);
 
-      expect(keys, ['list']);
+      expect(keys, [_FoundKey('list', 'class field')]);
     });
 
     test('ignore value notifier', () async {
@@ -466,7 +489,7 @@ void main() {
 
       final keys = await _findUnnecessaryKeys(source);
 
-      expect(keys, ['dep']);
+      expect(keys, [_FoundKey('dep', 'local variable')]);
     });
 
     test('report useState notifier reference', () async {
@@ -487,7 +510,7 @@ void main() {
 
       final keys = await _findUnnecessaryKeys(source);
 
-      expect(keys, ['state']);
+      expect(keys, [_FoundKey('state', 'state variable')]);
     });
 
     test('ignore useState value reference', () async {
@@ -529,7 +552,7 @@ void main() {
 
       final keys = await _findUnnecessaryKeys(source);
 
-      expect(keys, ['state']);
+      expect(keys, [_FoundKey('state', null)]);
     });
 
     test('ignore dotted value', () async {
@@ -672,7 +695,7 @@ void main() {
 
       final keys = await _findFunctionKeys(source);
 
-      expect(keys, ['listener']);
+      expect(keys, [_FoundKey('listener', 'local function')]);
     });
   });
 }
