@@ -9,10 +9,12 @@ import 'package:analyzer/src/dart/analysis/driver.dart';
 import 'package:analyzer_plugin/plugin/plugin.dart';
 import 'package:analyzer/src/dart/analysis/driver_based_analysis_context.dart';
 import 'package:analyzer_plugin/protocol/protocol_generated.dart' as plugin;
+import 'package:flutter_hooks_lint_plugin/src/plugin/config.dart';
 import 'package:flutter_hooks_lint_plugin/src/plugin/exhaustive_keys.dart';
 import 'package:flutter_hooks_lint_plugin/src/plugin/rules_of_hooks.dart';
 import 'package:flutter_hooks_lint_plugin/src/plugin/utils/supression.dart';
 import 'package:flutter_hooks_lint_plugin/src/plugin/utils/lint_error.dart';
+import 'package:yaml/yaml.dart';
 
 class FlutterHooksRulesPlugin extends ServerPlugin {
   FlutterHooksRulesPlugin(ResourceProvider? provider) : super(provider);
@@ -58,6 +60,19 @@ class FlutterHooksRulesPlugin extends ServerPlugin {
     final analysisContext = builder.createContext(contextRoot: locator.first);
     final context = analysisContext as DriverBasedAnalysisContext;
     final dartDriver = context.driver;
+    var options = FlutterHooksRulesPluginOptions();
+
+    try {
+      options = _loadOptions(context.contextRoot.optionsFile);
+    } catch (e, s) {
+      channel.sendNotification(
+        plugin.PluginErrorParams(
+          true,
+          'Failed to load options: ${e.toString()}',
+          s.toString(),
+        ).toNotification(),
+      );
+    }
 
     runZonedGuarded(
       () {
@@ -66,6 +81,7 @@ class FlutterHooksRulesPlugin extends ServerPlugin {
             _processResult(
               dartDriver,
               analysisResult,
+              options,
             );
           } else if (analysisResult is ErrorsResult) {
             channel.sendNotification(plugin.PluginErrorParams(
@@ -93,12 +109,13 @@ class FlutterHooksRulesPlugin extends ServerPlugin {
   void _processResult(
     AnalysisDriver dartDriver,
     ResolvedUnitResult analysisResult,
+    FlutterHooksRulesPluginOptions options,
   ) {
     final path = analysisResult.path;
     final unit = analysisResult.unit;
 
     try {
-      final errors = _check(dartDriver, path, unit, analysisResult);
+      final errors = _check(dartDriver, path, unit, analysisResult, options);
 
       channel.sendNotification(
         plugin.AnalysisErrorsParams(
@@ -122,6 +139,7 @@ class FlutterHooksRulesPlugin extends ServerPlugin {
     String filePath,
     CompilationUnit unit,
     ResolvedUnitResult analysisResult,
+    FlutterHooksRulesPluginOptions options,
   ) {
     final errors = <plugin.AnalysisErrorFixes>[];
 
@@ -147,6 +165,7 @@ class FlutterHooksRulesPlugin extends ServerPlugin {
 
     findExhaustiveKeys(
       unit,
+      options: options.exhaustiveKeys,
       onMissingKeyReport: (key, kind, node) {
         report(LintError.missingKey(key, kind, node));
       },
@@ -166,6 +185,14 @@ class FlutterHooksRulesPlugin extends ServerPlugin {
     );
 
     return errors;
+  }
+
+  FlutterHooksRulesPluginOptions _loadOptions(File? file) {
+    if (file == null) return FlutterHooksRulesPluginOptions();
+
+    final yaml = loadYaml(file.readAsStringSync());
+
+    return FlutterHooksRulesPluginOptions.fromYaml(yaml);
   }
 
   // from https://github.com/dart-code-checker/dart-code-metrics/blob/e8e14d44b940a5b29d33a782432f853ee42ac7a0/lib/src/analyzer_plugin/analyzer_plugin.dart#L274

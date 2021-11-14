@@ -1,3 +1,4 @@
+import 'package:flutter_hooks_lint_plugin/src/plugin/config.dart';
 import 'package:flutter_hooks_lint_plugin/src/plugin/exhaustive_keys.dart';
 import 'package:test/test.dart';
 
@@ -28,13 +29,17 @@ class _TestResult {
   final functionKeys = <_FoundKey>[];
 }
 
-Future<_TestResult> _find(String source) async {
+Future<_TestResult> _find(
+  String source, [
+  ExhaustiveKeysOptions? options,
+]) async {
   final unit = await compileCode(source);
 
   final result = _TestResult();
 
   findExhaustiveKeys(
     unit,
+    options: options ?? ExhaustiveKeysOptions(),
     onMissingKeyReport: (key, kind, node) {
       result.missingKeys.add(_FoundKey(key, kind));
     },
@@ -49,16 +54,25 @@ Future<_TestResult> _find(String source) async {
   return result;
 }
 
-Future<List<_FoundKey>> _findMissingKeys(String source) async {
-  return (await _find(source)).missingKeys;
+Future<List<_FoundKey>> _findMissingKeys(
+  String source, [
+  ExhaustiveKeysOptions? options,
+]) async {
+  return (await _find(source, options)).missingKeys;
 }
 
-Future<List<_FoundKey>> _findUnnecessaryKeys(String source) async {
-  return (await _find(source)).unnecessaryKeys;
+Future<List<_FoundKey>> _findUnnecessaryKeys(
+  String source, [
+  ExhaustiveKeysOptions? options,
+]) async {
+  return (await _find(source, options)).unnecessaryKeys;
 }
 
-Future<List<_FoundKey>> _findFunctionKeys(String source) async {
-  return (await _find(source)).functionKeys;
+Future<List<_FoundKey>> _findFunctionKeys(
+  String source, [
+  ExhaustiveKeysOptions? options,
+]) async {
+  return (await _find(source, options)).functionKeys;
 }
 
 void main() {
@@ -404,6 +418,78 @@ void main() {
       expect(keys, []);
     });
 
+    test('ignore useIsMounted value reference', () async {
+      final source = '''
+        class TestWidget extends HookWidget {
+          @override
+          Widget build(BuildContext context) {
+            final isMounted = useIsMounted();
+
+            useEffect(() {
+              if (isMounted) {
+                print('mounted');
+              }
+            }, []);
+
+            return Text('Hello');
+          }
+        }
+      ''';
+
+      final keys = await _findMissingKeys(source);
+
+      expect(keys, []);
+    });
+
+    test('ignore useContext value reference', () async {
+      final source = '''
+        class TestWidget extends HookWidget {
+          @override
+          Widget build(BuildContext _) {
+            final context = useContext();
+
+            useEffect(() {
+              print(context.toString());
+            }, []);
+
+            return Text('Hello');
+          }
+        }
+      ''';
+
+      final keys = await _findMissingKeys(source);
+
+      expect(keys, []);
+    });
+
+    test('ignore constantHooks value reference', () async {
+      final source = '''
+        class TestWidget extends HookWidget {
+          @override
+          Widget build(BuildContext _) {
+            final constant = useCustomHook();
+
+            useEffect(() {
+              print(constant.toString());
+            }, []);
+
+            return Text('Hello');
+          }
+        }
+      ''';
+
+      final keys = await _findMissingKeys(
+        source,
+        ExhaustiveKeysOptions(
+          constantHooks: [
+            'useCustomHook',
+          ],
+        ),
+      );
+
+      expect(keys, []);
+    });
+
     test('ignore local const reference', () async {
       final source = '''
         class TestWidget extends HookWidget {
@@ -553,6 +639,78 @@ void main() {
       final keys = await _findUnnecessaryKeys(source);
 
       expect(keys, [_FoundKey('state', null)]);
+    });
+
+    test('report useIsMounted value reference', () async {
+      final source = '''
+        class TestWidget extends HookWidget {
+          @override
+          Widget build(BuildContext context) {
+            final isMounted = useIsMounted();
+
+            useEffect(() {
+              if (isMounted) {
+                print('mounted');
+              }
+            }, [isMounted]);
+
+            return Text('Hello');
+          }
+        }
+      ''';
+
+      final keys = await _findUnnecessaryKeys(source);
+
+      expect(keys, [_FoundKey('isMounted', null)]);
+    });
+
+    test('report useContext value reference', () async {
+      final source = '''
+        class TestWidget extends HookWidget {
+          @override
+          Widget build(BuildContext _) {
+            final context = useContext();
+
+            useEffect(() {
+              print(context.toString());
+            }, [context]);
+
+            return Text('Hello');
+          }
+        }
+      ''';
+
+      final keys = await _findUnnecessaryKeys(source);
+
+      expect(keys, [_FoundKey('context', null)]);
+    });
+
+    test('report constantHooks value reference', () async {
+      final source = '''
+        class TestWidget extends HookWidget {
+          @override
+          Widget build(BuildContext _) {
+            final constant = useCustomHook();
+
+            useEffect(() {
+              print(constant.toString());
+            }, [constant]);
+
+            return Text('Hello');
+          }
+        }
+      ''';
+
+      final keys = await _findUnnecessaryKeys(
+        source,
+        ExhaustiveKeysOptions(
+          constantHooks: [
+            'useCustomHook',
+          ],
+        ),
+      );
+
+      expect(keys, [_FoundKey('constant', null)]);
     });
 
     test('ignore dotted value', () async {
