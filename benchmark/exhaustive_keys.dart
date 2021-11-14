@@ -1,5 +1,6 @@
 import 'package:analyzer/dart/ast/ast.dart';
 import 'package:benchmark_harness/benchmark_harness.dart';
+import 'package:flutter_hooks_lint_plugin/src/plugin/config.dart';
 import 'package:flutter_hooks_lint_plugin/src/plugin/exhaustive_keys.dart';
 
 import '../test/utils.dart';
@@ -17,6 +18,7 @@ class ExhaustiveKeysBenchmark extends BenchmarkBase {
   void run() {
     findExhaustiveKeys(
       unit,
+      options: ExhaustiveKeysOptions(),
       onMissingKeyReport: (_, __, ___) {},
       onUnnecessaryKeyReport: (_, __, ___) {},
       onFunctionKeyReport: (_, __, ___) {},

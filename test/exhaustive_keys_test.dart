@@ -161,54 +161,6 @@ void main() {
       expect(keys, [_FoundKey('dep', 'local function')]);
     });
 
-    test('report useMemoized', () async {
-      final source = '''
-        class TestWidget extends HookWidget {
-          const TestWidget({
-            Key? key,
-            required this.dep,
-          }): super(key: key);
-
-          final String dep;
-
-          @override
-          Widget build(BuildContext context) {
-            final test = useMemoized(() => dep, []);
-
-            return Text('TestWidget');
-          }
-        }
-      ''';
-
-      final keys = await _findMissingKeys(source);
-
-      expect(keys, [_FoundKey('dep', 'class field')]);
-    });
-
-    test('report useMemoized without keys', () async {
-      final source = '''
-        class TestWidget extends HookWidget {
-          const TestWidget({
-            Key? key,
-            required this.dep,
-          }): super(key: key);
-
-          final String dep;
-
-          @override
-          Widget build(BuildContext context) {
-            final test = useMemoized(() => dep);
-
-            return Text('TestWidget');
-          }
-        }
-      ''';
-
-      final keys = await _findMissingKeys(source);
-
-      expect(keys, [_FoundKey('dep', 'class field')]);
-    });
-
     test('ignore useEffect without keys', () async {
       final source = '''
         class TestWidget extends HookWidget {
@@ -224,6 +176,118 @@ void main() {
             useEffect(() {
               print(dep);
             });
+
+            return Text('TestWidget');
+          }
+        }
+      ''';
+
+      final keys = await _findMissingKeys(source);
+
+      expect(keys, []);
+    });
+
+    test('report hooks with keys', () async {
+      final source = '''
+        class TestWidget extends HookWidget {
+          const TestWidget({
+            Key? key,
+            required this.dep,
+          }): super(key: key);
+
+          final String dep;
+
+          @override
+          Widget build(BuildContext context) {
+            final val1 = useAnimationController(keys: [dep]);
+            final val2 = usePageController(keys: [dep]);
+            final val3 = useScrollController(keys: [dep]);
+            final val4 = useSingleTickerProvider(keys: [dep]);
+            final val5 = useStreamController(keys: [dep]);
+            final val6 = useTabController(keys: [dep]);
+            final val7 = useTransformationController(keys: [dep]);
+            final val8 = useMemoized(() => dep, [dep]);
+            final val9 = useValueNotifier(0, [dep]);
+
+            useEffect(() {
+              print('\$val1\$val2\$val3\$val4\$val5\$val6\$val7\$val8\$val9');
+            }, []);
+
+            return Text('TestWidget');
+          }
+        }
+      ''';
+
+      final keys = await _findMissingKeys(source);
+
+      expect(keys, [
+        _FoundKey('val1', 'local variable'),
+        _FoundKey('val2', 'local variable'),
+        _FoundKey('val3', 'local variable'),
+        _FoundKey('val4', 'local variable'),
+        _FoundKey('val5', 'local variable'),
+        _FoundKey('val6', 'local variable'),
+        _FoundKey('val7', 'local variable'),
+        _FoundKey('val8', 'local variable'),
+        _FoundKey('val9', 'local variable'),
+      ]);
+    });
+
+    test('ignore hooks with empty keys', () async {
+      final source = '''
+        class TestWidget extends HookWidget {
+          const TestWidget({
+            Key? key,
+          }): super(key: key);
+
+          @override
+          Widget build(BuildContext context) {
+            final val1 = useAnimationController(keys: []);
+            final val2 = usePageController(keys: []);
+            final val3 = useScrollController(keys: []);
+            final val4 = useSingleTickerProvider(keys: []);
+            final val5 = useStreamController(keys: []);
+            final val6 = useTabController(keys: []);
+            final val7 = useTransformationController(keys: []);
+            final val8 = useMemoized(() => 0, []);
+            final val9 = useValueNotifier(0, []);
+
+            useEffect(() {
+              print('\$val1\$val2\$val3\$val4\$val5\$val6\$val7\$val8\$val9');
+            }, []);
+
+            return Text('TestWidget');
+          }
+        }
+      ''';
+
+      final keys = await _findMissingKeys(source);
+
+      expect(keys, []);
+    });
+
+    test('ignore hooks without keys', () async {
+      final source = '''
+        class TestWidget extends HookWidget {
+          const TestWidget({
+            Key? key,
+          }): super(key: key);
+
+          @override
+          Widget build(BuildContext context) {
+            final val1 = useAnimationController();
+            final val2 = usePageController();
+            final val3 = useScrollController();
+            final val4 = useSingleTickerProvider();
+            final val5 = useStreamController();
+            final val6 = useTabController();
+            final val7 = useTransformationController();
+            final val8 = useMemoized(() => dep);
+            final val9 = useValueNotifier(0);
+
+            useEffect(() {
+              print('\$val1\$val2\$val3\$val4\$val5\$val6\$val7\$val8\$val9');
+            }, []);
 
             return Text('TestWidget');
           }
@@ -295,14 +359,15 @@ void main() {
         class TestWidget extends HookWidget {
           const TestWidget({
             Key? key,
+            required this.controller,
           }) : super(key: key);
+
+          final StreamController<String> controller;
 
           @override
           Widget build(BuildContext context) {
-            final streamController = useStreamController();
-
             useEffect(() {
-              final subscription = streamController.stream
+              final subscription = controller.stream
                   .listen(
                      (e) => Future.microtask(
                        () => print(e),
@@ -319,7 +384,7 @@ void main() {
 
       final keys = await _findMissingKeys(source);
 
-      expect(keys, [_FoundKey('streamController', 'local variable')]);
+      expect(keys, [_FoundKey('controller', 'class field')]);
     });
 
     test('report optional dotted value', () async {
@@ -397,58 +462,22 @@ void main() {
       expect(keys, []);
     });
 
-    test('ignore useRef value reference', () async {
-      final source = '''
-        class TestWidget extends HookWidget {
-          @override
-          Widget build(BuildContext context) {
-            final state = useRef(0);
-
-            useEffect(() {
-              state.value++;
-            }, []);
-
-            return Text('Hello');
-          }
-        }
-      ''';
-
-      final keys = await _findMissingKeys(source);
-
-      expect(keys, []);
-    });
-
-    test('ignore useIsMounted value reference', () async {
-      final source = '''
-        class TestWidget extends HookWidget {
-          @override
-          Widget build(BuildContext context) {
-            final isMounted = useIsMounted();
-
-            useEffect(() {
-              if (isMounted) {
-                print('mounted');
-              }
-            }, []);
-
-            return Text('Hello');
-          }
-        }
-      ''';
-
-      final keys = await _findMissingKeys(source);
-
-      expect(keys, []);
-    });
-
-    test('ignore useContext value reference', () async {
+    test('ignore default constantHooks value reference', () async {
       final source = '''
         class TestWidget extends HookWidget {
           @override
           Widget build(BuildContext _) {
             final context = useContext();
+            final state = useRef(0);
+            final isMounted = useIsMounted();
 
             useEffect(() {
+              state.value++;
+
+              if (isMounted) {
+                print('mounted');
+              }
+
               print(context.toString());
             }, []);
 
@@ -462,7 +491,7 @@ void main() {
       expect(keys, []);
     });
 
-    test('ignore constantHooks value reference', () async {
+    test('ignore option specified constantHooks value reference', () async {
       final source = '''
         class TestWidget extends HookWidget {
           @override
@@ -622,97 +651,6 @@ void main() {
       expect(keys, []);
     });
 
-    test('report useRef value reference', () async {
-      final source = '''
-        class TestWidget extends HookWidget {
-          @override
-          Widget build(BuildContext context) {
-            final state = useRef(0);
-            useEffect(() {
-              state.value++;
-            }, [state]);
-            return Text('Hello');
-          }
-        }
-      ''';
-
-      final keys = await _findUnnecessaryKeys(source);
-
-      expect(keys, [_FoundKey('state', null)]);
-    });
-
-    test('report useIsMounted value reference', () async {
-      final source = '''
-        class TestWidget extends HookWidget {
-          @override
-          Widget build(BuildContext context) {
-            final isMounted = useIsMounted();
-
-            useEffect(() {
-              if (isMounted) {
-                print('mounted');
-              }
-            }, [isMounted]);
-
-            return Text('Hello');
-          }
-        }
-      ''';
-
-      final keys = await _findUnnecessaryKeys(source);
-
-      expect(keys, [_FoundKey('isMounted', null)]);
-    });
-
-    test('report useContext value reference', () async {
-      final source = '''
-        class TestWidget extends HookWidget {
-          @override
-          Widget build(BuildContext _) {
-            final context = useContext();
-
-            useEffect(() {
-              print(context.toString());
-            }, [context]);
-
-            return Text('Hello');
-          }
-        }
-      ''';
-
-      final keys = await _findUnnecessaryKeys(source);
-
-      expect(keys, [_FoundKey('context', null)]);
-    });
-
-    test('report constantHooks value reference', () async {
-      final source = '''
-        class TestWidget extends HookWidget {
-          @override
-          Widget build(BuildContext _) {
-            final constant = useCustomHook();
-
-            useEffect(() {
-              print(constant.toString());
-            }, [constant]);
-
-            return Text('Hello');
-          }
-        }
-      ''';
-
-      final keys = await _findUnnecessaryKeys(
-        source,
-        ExhaustiveKeysOptions(
-          constantHooks: [
-            'useCustomHook',
-          ],
-        ),
-      );
-
-      expect(keys, [_FoundKey('constant', null)]);
-    });
-
     test('ignore dotted value', () async {
       final source = '''
         const _limit = 5;
@@ -746,14 +684,15 @@ void main() {
         class TestWidget extends HookWidget {
           const TestWidget({
             Key? key,
+            required this.controller,
           }) : super(key: key);
+
+          final StreamController<String> controller;
 
           @override
           Widget build(BuildContext context) {
-            final streamController = useStreamController();
-
             useEffect(() {
-              final subscription = streamController.stream
+              final subscription = controller.stream
                   .listen(
                      (e) => Future.microtask(
                        () => print(e),
@@ -761,7 +700,7 @@ void main() {
                   );
 
               return subscription.cancel;
-            }, [streamController]);
+            }, [controller]);
 
             return Text('Hello');
           }
