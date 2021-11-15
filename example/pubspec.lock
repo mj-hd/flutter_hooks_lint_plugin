@@ -114,9 +114,11 @@ packages:
   flutter_hooks_lint_plugin:
     dependency: "direct dev"
     description:
-      path: "/Users/s01052/Projects/flutter_hooks_lint_plugin"
-      relative: false
-    source: path
+      path: "."
+      ref: "81d119ba777c8a9b4b215b7cab0f84294da16a7d"
+      resolved-ref: "81d119ba777c8a9b4b215b7cab0f84294da16a7d"
+      url: "https://github.com/mj-hd/flutter_hooks_lint_plugin"
+    source: git
     version: "1.0.0"
   glob:
     dependency: transitive
