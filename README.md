@@ -1,7 +1,5 @@
 # flutter_hooks_lint_plugin
 
-**NOTE: This repository is under development, may contain buggy behavior, or missing features, ...**
-
 flutter_hooks_lint_plugin is a dart analyzer plugin for [the flutter hooks](https://pub.dev/packages/flutter_hooks), inspired by [eslint-plugin-react-hooks](https://www.npmjs.com/package/eslint-plugin-react-hooks).
 
 ## Rules
@@ -30,3 +28,44 @@ if (flag) {
   final variable = useState('hello'); // <= avoid nested hooks
 }
 ```
+
+## Installation
+
+Add `flutter_hooks_lint_plugin` to your `pubspec.yaml`
+
+```yaml
+dev_dependencies:
+  flutter_hooks_lint_plugin: # TODO: write version after published
+```
+
+## Options
+
+You can customize plugin's behavior by the `analysis_options.yaml`:
+
+```yaml
+flutter_hooks_lint_plugin:
+  exhaustive_keys:
+    # hooks do not change over the state's lifecycle 
+    constant_hooks:
+      # default values
+      - useRef
+      - useIsMounted
+      - useFocusNode
+      - useContext
+
+      # your custom hooks here
+      - useConstantValue
+```
+
+## TODO
+
+- [ ] publish
+- [ ] support `Fix` (suggestion)
+
+## Contribution
+
+TODO
+
+## LICENSE
+
+TODO
