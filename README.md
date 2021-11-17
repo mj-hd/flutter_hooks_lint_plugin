@@ -31,12 +31,22 @@ if (flag) {
 
 ## Installation
 
-Add `flutter_hooks_lint_plugin` to your `pubspec.yaml`
+Add `flutter_hooks_lint_plugin` dependency to your `pubspec.yaml`:
 
 ```yaml
 dev_dependencies:
-  flutter_hooks_lint_plugin: # TODO: write version after published
+  flutter_hooks_lint_plugin: ^0.0.1
 ```
+
+Add `flutter_hooks_lint_plugin` plugin directive to your `analyzer_options.yaml`:
+
+```yaml
+analyzer:
+  plugins:
+    - flutter_hooks_lint_plugin
+```
+
+Then, Run `flutter pub get` and Restart your IDE/Editor.
 
 ## Options
 
@@ -59,13 +69,20 @@ flutter_hooks_lint_plugin:
 
 ## TODO
 
-- [ ] publish
 - [ ] support `Fix` (suggestion)
 
 ## Contribution
 
-TODO
+Welcome PRs!
+
+You can develop locally by modifying plugin's dependency to absolute path in `tools/analyzer_plugin/pubspec.yaml`:
+
+```dart
+dependencies:
+  flutter_hooks_lint_plugin:
+    path: /home/mjhd/flutter_hooks_lint_plugin # <= absolute path to the cloned directory
+```
 
 ## LICENSE
 
-TODO
+[The MIT License © mjhd](https://github.com/mj-hd/flutter_hooks_lint_plugin/blob/master/LICENSE)
