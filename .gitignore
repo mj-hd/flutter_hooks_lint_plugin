@@ -6,4 +6,5 @@
 build/
 
 .log*
+example/pubspec.lock
 tools/analyzer_plugin/pubspec.lock
