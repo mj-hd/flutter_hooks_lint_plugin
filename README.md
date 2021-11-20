@@ -72,7 +72,7 @@ flutter_hooks_lint_plugin:
 
 You can also use this plugin by CLI command:
 
-```dart
+```sh
 $ dart pub run flutter_hooks_lint_plugin:flutter_hooks_lint analyze ./
 
 $ flutter pub run flutter_hooks_lint_plugin:flutter_hooks_lint analyze ./
