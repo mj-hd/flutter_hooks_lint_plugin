@@ -35,7 +35,7 @@ Add `flutter_hooks_lint_plugin` dependency to your `pubspec.yaml`:
 
 ```yaml
 dev_dependencies:
-  flutter_hooks_lint_plugin: ^0.0.1
+  flutter_hooks_lint_plugin: ^0.0.2
 ```
 
 Add `flutter_hooks_lint_plugin` plugin directive to your `analyzer_options.yaml`:
@@ -46,7 +46,7 @@ analyzer:
     - flutter_hooks_lint_plugin
 ```
 
-Then, Run `flutter pub get` and Restart your IDE/Editor.
+Then, run `flutter pub get` and restart your IDE/Editor.
 
 ## Options
 
@@ -96,4 +96,4 @@ dependencies:
 
 ## LICENSE
 
-[The MIT License © mjhd](https://github.com/mj-hd/flutter_hooks_lint_plugin/blob/master/LICENSE)
+[The MIT License © mjhd](https://github.com/mj-hd/flutter_hooks_lint_plugin/blob/main/LICENSE)
