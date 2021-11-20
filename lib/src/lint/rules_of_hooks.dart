@@ -1,6 +1,6 @@
 import 'package:analyzer/dart/ast/ast.dart';
 import 'package:analyzer/dart/ast/visitor.dart';
-import 'package:flutter_hooks_lint_plugin/src/plugin/hook_widget_visitor.dart';
+import 'package:flutter_hooks_lint_plugin/src/lint/hook_widget_visitor.dart';
 import 'package:logging/logging.dart';
 
 final log = Logger('rules_of_hooks');

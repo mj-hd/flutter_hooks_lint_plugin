@@ -1,5 +1,5 @@
-import 'package:flutter_hooks_lint_plugin/src/plugin/config.dart';
-import 'package:flutter_hooks_lint_plugin/src/plugin/exhaustive_keys.dart';
+import 'package:flutter_hooks_lint_plugin/src/lint/config.dart';
+import 'package:flutter_hooks_lint_plugin/src/lint/exhaustive_keys.dart';
 import 'package:test/test.dart';
 
 import 'utils.dart';
@@ -40,13 +40,13 @@ Future<_TestResult> _find(
   findExhaustiveKeys(
     unit,
     options: options ?? ExhaustiveKeysOptions(),
-    onMissingKeyReport: (key, kind, node) {
+    onMissingKeyReport: (key, kind, _, __) {
       result.missingKeys.add(_FoundKey(key, kind));
     },
-    onUnnecessaryKeyReport: (key, kind, node) {
+    onUnnecessaryKeyReport: (key, kind, _, __) {
       result.unnecessaryKeys.add(_FoundKey(key, kind));
     },
-    onFunctionKeyReport: (key, kind, node) {
+    onFunctionKeyReport: (key, kind, _, __) {
       result.functionKeys.add(_FoundKey(key, kind));
     },
   );

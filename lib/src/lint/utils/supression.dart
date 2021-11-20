@@ -1,5 +1,5 @@
 import 'package:analyzer/source/line_info.dart';
-import 'package:flutter_hooks_lint_plugin/src/plugin/utils/lint_error.dart';
+import 'package:flutter_hooks_lint_plugin/src/lint/utils/lint_error.dart';
 
 class Supression {
   static final _ignoreRegExp = RegExp('//[ ]*ignore:(.*)', multiLine: true);
@@ -36,7 +36,7 @@ class Supression {
   final Map<int, Set<String>> lineScope = {};
 
   bool isSupressedLintError(LintError err) {
-    final loc = lineInfo.getLocation(err.node.beginToken.charOffset);
+    final loc = lineInfo.getLocation(err.errNode.beginToken.charOffset);
     return isSupressed(err.code, loc.lineNumber);
   }
 

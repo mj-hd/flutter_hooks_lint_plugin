@@ -1,4 +1,4 @@
-import 'package:flutter_hooks_lint_plugin/src/plugin/config.dart';
+import 'package:flutter_hooks_lint_plugin/src/lint/config.dart';
 import 'package:test/test.dart';
 import 'package:yaml/yaml.dart';
 

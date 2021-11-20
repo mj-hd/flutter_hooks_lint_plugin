@@ -67,6 +67,17 @@ flutter_hooks_lint_plugin:
       - useConstantValue
 ```
 
+
+## CLI
+
+You can also use this plugin by CLI command:
+
+```dart
+$ dart pub run flutter_hooks_lint_plugin:flutter_hooks_lint analyze ./
+
+$ flutter pub run flutter_hooks_lint_plugin:flutter_hooks_lint analyze ./
+```
+
 ## TODO
 
 - [ ] support `Fix` (suggestion)

@@ -7,41 +7,48 @@ class LintError {
   const LintError({
     required this.message,
     required this.code,
-    required this.node,
+    this.ctxNode,
+    required this.errNode,
   });
 
   static final String _exhaustiveKeysCode = 'exhaustive_keys';
   static final String _nestedHooks = 'nested_hooks';
 
-  factory LintError.missingKey(String key, String? kind, AstNode node) {
+  factory LintError.missingKey(
+      String key, String? kind, AstNode? ctxNode, AstNode errNode) {
     return LintError(
       message: "Missing key '$key' " +
           (kind != null ? '($kind) ' : '') +
           'found. Add the key, or ignore this line. ',
       code: _exhaustiveKeysCode,
-      node: node,
+      ctxNode: ctxNode,
+      errNode: errNode,
     );
   }
 
-  factory LintError.unnecessaryKey(String key, String? kind, AstNode node) {
+  factory LintError.unnecessaryKey(
+      String key, String? kind, AstNode? ctxNode, AstNode errNode) {
     return LintError(
       message: "Unnecessary key '$key' " +
           (kind != null ? '($kind) ' : '') +
           'found. Remove the key, or ignore this line.',
       code: _exhaustiveKeysCode,
-      node: node,
+      ctxNode: ctxNode,
+      errNode: errNode,
     );
   }
 
   factory LintError.functionKey(
     String functionName,
-    AstNode node,
+    AstNode? ctxNode,
+    AstNode errNode,
   ) {
     return LintError(
       message:
           "'$functionName' changes on every re-build. Move its definition inside the hook, or wrap with useCallback.",
       code: _exhaustiveKeysCode,
-      node: node,
+      ctxNode: ctxNode,
+      errNode: errNode,
     );
   }
 
@@ -50,16 +57,17 @@ class LintError {
       message:
           'Avoid nested use of $hookName. Hooks must be used in top-level scope of the build function.',
       code: _nestedHooks,
-      node: node,
+      errNode: node,
     );
   }
 
   final String message;
   final String code;
-  final AstNode node;
+  final AstNode? ctxNode;
+  final AstNode errNode;
 
   plugin.AnalysisError toAnalysisError(String file, CompilationUnit unit) {
-    final location = _toLocation(file, unit);
+    final location = _toLocation(errNode, file, unit);
 
     return plugin.AnalysisError(
       plugin.AnalysisErrorSeverity.INFO,
@@ -70,7 +78,7 @@ class LintError {
     );
   }
 
-  plugin.Location _toLocation(String file, CompilationUnit unit) {
+  plugin.Location _toLocation(AstNode node, String file, CompilationUnit unit) {
     final lineInfo = unit.lineInfo!;
     final begin = node.beginToken.charOffset;
     final end = node.endToken.charEnd;
@@ -79,13 +87,22 @@ class LintError {
 
     return plugin.Location(
       file,
-      node.beginToken.charOffset,
-      node.length,
+      errNode.beginToken.charOffset,
+      errNode.length,
       loc.lineNumber,
       loc.columnNumber,
       endLine: locEnd.lineNumber,
       endColumn: locEnd.columnNumber,
     );
+  }
+
+  String toReadableString(String file, CompilationUnit unit) {
+    final errLoc = _toLocation(errNode, file, unit);
+
+    return '''${errLoc.file} (Line: ${errLoc.startLine}, Col: ${errLoc.startColumn}): $message ($code)
+
+      ${ctxNode?.toSource() ?? errNode.toSource()}
+    ''';
   }
 }
 

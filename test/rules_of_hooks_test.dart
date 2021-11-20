@@ -1,4 +1,4 @@
-import 'package:flutter_hooks_lint_plugin/src/plugin/rules_of_hooks.dart';
+import 'package:flutter_hooks_lint_plugin/src/lint/rules_of_hooks.dart';
 import 'package:test/test.dart';
 
 import 'utils.dart';

@@ -1,9 +1,9 @@
 import 'package:analyzer/dart/ast/ast.dart';
 import 'package:analyzer/dart/ast/visitor.dart';
 import 'package:analyzer/dart/element/element.dart';
-import 'package:flutter_hooks_lint_plugin/src/plugin/config.dart';
-import 'package:flutter_hooks_lint_plugin/src/plugin/utils/cache.dart';
-import 'package:flutter_hooks_lint_plugin/src/plugin/hook_widget_visitor.dart';
+import 'package:flutter_hooks_lint_plugin/src/lint/config.dart';
+import 'package:flutter_hooks_lint_plugin/src/lint/utils/cache.dart';
+import 'package:flutter_hooks_lint_plugin/src/lint/hook_widget_visitor.dart';
 import 'package:logging/logging.dart';
 
 final log = Logger('exhaustive_keys');
@@ -11,6 +11,7 @@ final log = Logger('exhaustive_keys');
 typedef ExhaustiveKeysReportCallback = void Function(
   String keyName,
   String? kind,
+  AstNode? ctxNode,
   AstNode errNode,
 );
 
@@ -551,6 +552,7 @@ class _HooksVisitor extends RecursiveAstVisitor<void> {
             onMissingKeyReport(
               key.toString(),
               key.kind.toReadableString(),
+              node,
               errNode,
             );
           }
@@ -559,6 +561,7 @@ class _HooksVisitor extends RecursiveAstVisitor<void> {
             onUnnecessaryKeyReport(
               key.toString(),
               key.kind.toReadableString(),
+              node,
               errNode,
             );
           }
@@ -568,6 +571,7 @@ class _HooksVisitor extends RecursiveAstVisitor<void> {
               onFunctionKeyReport(
                 key.toString(),
                 key.kind.toReadableString(),
+                node,
                 errNode,
               );
             }

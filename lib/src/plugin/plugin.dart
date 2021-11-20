@@ -3,17 +3,16 @@ import 'dart:async';
 import 'package:analyzer/dart/analysis/context_builder.dart';
 import 'package:analyzer/dart/analysis/context_locator.dart';
 import 'package:analyzer/dart/analysis/results.dart';
-import 'package:analyzer/dart/ast/ast.dart';
 import 'package:analyzer/file_system/file_system.dart';
 import 'package:analyzer/src/dart/analysis/driver.dart';
 import 'package:analyzer_plugin/plugin/plugin.dart';
 import 'package:analyzer/src/dart/analysis/driver_based_analysis_context.dart';
 import 'package:analyzer_plugin/protocol/protocol_generated.dart' as plugin;
-import 'package:flutter_hooks_lint_plugin/src/plugin/config.dart';
-import 'package:flutter_hooks_lint_plugin/src/plugin/exhaustive_keys.dart';
-import 'package:flutter_hooks_lint_plugin/src/plugin/rules_of_hooks.dart';
-import 'package:flutter_hooks_lint_plugin/src/plugin/utils/supression.dart';
-import 'package:flutter_hooks_lint_plugin/src/plugin/utils/lint_error.dart';
+import 'package:flutter_hooks_lint_plugin/src/lint/config.dart';
+import 'package:flutter_hooks_lint_plugin/src/lint/exhaustive_keys.dart';
+import 'package:flutter_hooks_lint_plugin/src/lint/rules_of_hooks.dart';
+import 'package:flutter_hooks_lint_plugin/src/lint/utils/supression.dart';
+import 'package:flutter_hooks_lint_plugin/src/lint/utils/lint_error.dart';
 import 'package:yaml/yaml.dart';
 
 class FlutterHooksRulesPlugin extends ServerPlugin {
@@ -28,7 +27,7 @@ class FlutterHooksRulesPlugin extends ServerPlugin {
   String get name => 'flutter_hooks_lint_plugin';
 
   @override
-  String get version => '1.0.0';
+  String get version => '0.0.2';
 
   @override
   AnalysisDriverGeneric createAnalysisDriver(plugin.ContextRoot contextRoot) {
@@ -112,10 +111,9 @@ class FlutterHooksRulesPlugin extends ServerPlugin {
     FlutterHooksRulesPluginOptions options,
   ) {
     final path = analysisResult.path;
-    final unit = analysisResult.unit;
 
     try {
-      final errors = _check(dartDriver, path, unit, analysisResult, options);
+      final errors = _check(dartDriver, path, analysisResult, options);
 
       channel.sendNotification(
         plugin.AnalysisErrorsParams(
@@ -137,7 +135,6 @@ class FlutterHooksRulesPlugin extends ServerPlugin {
   List<plugin.AnalysisErrorFixes> _check(
     AnalysisDriver driver,
     String filePath,
-    CompilationUnit unit,
     ResolvedUnitResult analysisResult,
     FlutterHooksRulesPluginOptions options,
   ) {
@@ -145,7 +142,7 @@ class FlutterHooksRulesPlugin extends ServerPlugin {
 
     final supression = Supression(
       content: analysisResult.content,
-      lineInfo: unit.lineInfo!,
+      lineInfo: analysisResult.unit.lineInfo!,
     );
 
     void report(LintError err, [LintFix? fix]) {
@@ -155,7 +152,7 @@ class FlutterHooksRulesPlugin extends ServerPlugin {
 
       errors.add(
         plugin.AnalysisErrorFixes(
-          err.toAnalysisError(filePath, unit),
+          err.toAnalysisError(filePath, analysisResult.unit),
           fixes: fix != null
               ? [fix.toAnalysisFix(filePath, analysisResult)]
               : null,
@@ -164,21 +161,21 @@ class FlutterHooksRulesPlugin extends ServerPlugin {
     }
 
     findExhaustiveKeys(
-      unit,
+      analysisResult.unit,
       options: options.exhaustiveKeys,
-      onMissingKeyReport: (key, kind, node) {
-        report(LintError.missingKey(key, kind, node));
+      onMissingKeyReport: (key, kind, ctxNode, errNode) {
+        report(LintError.missingKey(key, kind, ctxNode, errNode));
       },
-      onUnnecessaryKeyReport: (key, kind, node) {
-        report(LintError.unnecessaryKey(key, kind, node));
+      onUnnecessaryKeyReport: (key, kind, ctxNode, errNode) {
+        report(LintError.unnecessaryKey(key, kind, ctxNode, errNode));
       },
-      onFunctionKeyReport: (key, _, node) {
-        report(LintError.functionKey(key, node));
+      onFunctionKeyReport: (key, _, ctxNode, errNode) {
+        report(LintError.functionKey(key, ctxNode, errNode));
       },
     );
 
     findRulesOfHooks(
-      unit,
+      analysisResult.unit,
       onNestedHooksReport: (hookName, node) {
         report(LintError.nestedHooks(hookName, node));
       },
