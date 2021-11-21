@@ -27,7 +27,7 @@ class FlutterHooksRulesPlugin extends ServerPlugin {
   String get name => 'flutter_hooks_lint_plugin';
 
   @override
-  String get version => '0.0.2';
+  String get version => '0.1.0';
 
   @override
   AnalysisDriverGeneric createAnalysisDriver(plugin.ContextRoot contextRoot) {
