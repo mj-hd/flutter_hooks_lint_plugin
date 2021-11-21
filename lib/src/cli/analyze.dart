@@ -6,7 +6,7 @@ import 'package:analyzer/file_system/physical_file_system.dart';
 import 'package:analyzer/src/dart/analysis/analysis_context_collection.dart';
 import 'package:analyzer/src/dart/analysis/driver_based_analysis_context.dart';
 import 'package:args/command_runner.dart';
-import 'package:flutter_hooks_lint_plugin/src/lint/config.dart';
+import 'package:flutter_hooks_lint_plugin/src/lint/option.dart';
 import 'package:flutter_hooks_lint_plugin/src/lint/exhaustive_keys.dart';
 import 'package:flutter_hooks_lint_plugin/src/lint/rules_of_hooks.dart';
 import 'package:flutter_hooks_lint_plugin/src/lint/utils/lint_error.dart';
@@ -152,13 +152,36 @@ class AnalyzeCommand extends Command {
       result.unit,
       options: options.exhaustiveKeys,
       onMissingKeyReport: (key, kind, ctxNode, errNode) {
-        report(LintError.missingKey(key, kind, ctxNode, errNode));
+        report(
+          LintError.missingKey(
+            key,
+            kind,
+            ctxNode,
+            errNode,
+            options.errors,
+          ),
+        );
       },
       onUnnecessaryKeyReport: (key, kind, ctxNode, errNode) {
-        report(LintError.unnecessaryKey(key, kind, ctxNode, errNode));
+        report(
+          LintError.unnecessaryKey(
+            key,
+            kind,
+            ctxNode,
+            errNode,
+            options.errors,
+          ),
+        );
       },
       onFunctionKeyReport: (key, _, ctxNode, errNode) {
-        report(LintError.functionKey(key, ctxNode, errNode));
+        report(
+          LintError.functionKey(
+            key,
+            ctxNode,
+            errNode,
+            options.errors,
+          ),
+        );
       },
     );
 
@@ -167,7 +190,13 @@ class AnalyzeCommand extends Command {
     findRulesOfHooks(
       result.unit,
       onNestedHooksReport: (hookName, node) {
-        report(LintError.nestedHooks(hookName, node));
+        report(
+          LintError.nestedHooks(
+            hookName,
+            node,
+            options.errors,
+          ),
+        );
       },
     );
 

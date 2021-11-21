@@ -8,8 +8,8 @@ import 'package:analyzer/src/dart/analysis/driver.dart';
 import 'package:analyzer_plugin/plugin/plugin.dart';
 import 'package:analyzer/src/dart/analysis/driver_based_analysis_context.dart';
 import 'package:analyzer_plugin/protocol/protocol_generated.dart' as plugin;
-import 'package:flutter_hooks_lint_plugin/src/lint/config.dart';
 import 'package:flutter_hooks_lint_plugin/src/lint/exhaustive_keys.dart';
+import 'package:flutter_hooks_lint_plugin/src/lint/option.dart';
 import 'package:flutter_hooks_lint_plugin/src/lint/rules_of_hooks.dart';
 import 'package:flutter_hooks_lint_plugin/src/lint/utils/supression.dart';
 import 'package:flutter_hooks_lint_plugin/src/lint/utils/lint_error.dart';
@@ -164,20 +164,49 @@ class FlutterHooksRulesPlugin extends ServerPlugin {
       analysisResult.unit,
       options: options.exhaustiveKeys,
       onMissingKeyReport: (key, kind, ctxNode, errNode) {
-        report(LintError.missingKey(key, kind, ctxNode, errNode));
+        report(
+          LintError.missingKey(
+            key,
+            kind,
+            ctxNode,
+            errNode,
+            options.errors,
+          ),
+        );
       },
       onUnnecessaryKeyReport: (key, kind, ctxNode, errNode) {
-        report(LintError.unnecessaryKey(key, kind, ctxNode, errNode));
+        report(
+          LintError.unnecessaryKey(
+            key,
+            kind,
+            ctxNode,
+            errNode,
+            options.errors,
+          ),
+        );
       },
       onFunctionKeyReport: (key, _, ctxNode, errNode) {
-        report(LintError.functionKey(key, ctxNode, errNode));
+        report(
+          LintError.functionKey(
+            key,
+            ctxNode,
+            errNode,
+            options.errors,
+          ),
+        );
       },
     );
 
     findRulesOfHooks(
       analysisResult.unit,
       onNestedHooksReport: (hookName, node) {
-        report(LintError.nestedHooks(hookName, node));
+        report(
+          LintError.nestedHooks(
+            hookName,
+            node,
+            options.errors,
+          ),
+        );
       },
     );
 

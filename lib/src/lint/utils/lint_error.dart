@@ -2,6 +2,7 @@ import 'package:analyzer/dart/analysis/results.dart';
 import 'package:analyzer/dart/ast/ast.dart';
 import 'package:analyzer_plugin/protocol/protocol_common.dart' as plugin;
 import 'package:analyzer_plugin/protocol/protocol_generated.dart' as plugin;
+import 'package:flutter_hooks_lint_plugin/src/lint/option.dart';
 
 class LintError {
   const LintError({
@@ -9,13 +10,19 @@ class LintError {
     required this.code,
     this.ctxNode,
     required this.errNode,
+    required this.severity,
   });
 
   static final String _exhaustiveKeysCode = 'exhaustive_keys';
   static final String _nestedHooks = 'nested_hooks';
 
   factory LintError.missingKey(
-      String key, String? kind, AstNode? ctxNode, AstNode errNode) {
+    String key,
+    String? kind,
+    AstNode? ctxNode,
+    AstNode errNode,
+    ErrorsOptions opts,
+  ) {
     return LintError(
       message: "Missing key '$key' " +
           (kind != null ? '($kind) ' : '') +
@@ -23,11 +30,18 @@ class LintError {
       code: _exhaustiveKeysCode,
       ctxNode: ctxNode,
       errNode: errNode,
+      severity: opts.severity[_exhaustiveKeysCode] ??
+          plugin.AnalysisErrorSeverity.INFO,
     );
   }
 
   factory LintError.unnecessaryKey(
-      String key, String? kind, AstNode? ctxNode, AstNode errNode) {
+    String key,
+    String? kind,
+    AstNode? ctxNode,
+    AstNode errNode,
+    ErrorsOptions opts,
+  ) {
     return LintError(
       message: "Unnecessary key '$key' " +
           (kind != null ? '($kind) ' : '') +
@@ -35,6 +49,8 @@ class LintError {
       code: _exhaustiveKeysCode,
       ctxNode: ctxNode,
       errNode: errNode,
+      severity: opts.severity[_exhaustiveKeysCode] ??
+          plugin.AnalysisErrorSeverity.INFO,
     );
   }
 
@@ -42,6 +58,7 @@ class LintError {
     String functionName,
     AstNode? ctxNode,
     AstNode errNode,
+    ErrorsOptions opts,
   ) {
     return LintError(
       message:
@@ -49,15 +66,23 @@ class LintError {
       code: _exhaustiveKeysCode,
       ctxNode: ctxNode,
       errNode: errNode,
+      severity: opts.severity[_exhaustiveKeysCode] ??
+          plugin.AnalysisErrorSeverity.INFO,
     );
   }
 
-  factory LintError.nestedHooks(String hookName, AstNode node) {
+  factory LintError.nestedHooks(
+    String hookName,
+    AstNode node,
+    ErrorsOptions opts,
+  ) {
     return LintError(
       message:
           'Avoid nested use of $hookName. Hooks must be used in top-level scope of the build function.',
       code: _nestedHooks,
       errNode: node,
+      severity: opts.severity[_exhaustiveKeysCode] ??
+          plugin.AnalysisErrorSeverity.INFO,
     );
   }
 
@@ -65,12 +90,13 @@ class LintError {
   final String code;
   final AstNode? ctxNode;
   final AstNode errNode;
+  final plugin.AnalysisErrorSeverity severity;
 
   plugin.AnalysisError toAnalysisError(String file, CompilationUnit unit) {
     final location = _toLocation(errNode, file, unit);
 
     return plugin.AnalysisError(
-      plugin.AnalysisErrorSeverity.INFO,
+      severity,
       plugin.AnalysisErrorType.LINT,
       location,
       message,
@@ -99,7 +125,7 @@ class LintError {
   String toReadableString(String file, CompilationUnit unit) {
     final errLoc = _toLocation(errNode, file, unit);
 
-    return '''${errLoc.file} (Line: ${errLoc.startLine}, Col: ${errLoc.startColumn}): $message ($code)
+    return '''${errLoc.file} (Line: ${errLoc.startLine}, Col: ${errLoc.startColumn}): $severity $message ($code)
 
       ${ctxNode?.toSource() ?? errNode.toSource()}
     ''';

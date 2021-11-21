@@ -1,6 +1,6 @@
 import 'package:analyzer/dart/ast/ast.dart';
 import 'package:benchmark_harness/benchmark_harness.dart';
-import 'package:flutter_hooks_lint_plugin/src/lint/config.dart';
+import 'package:flutter_hooks_lint_plugin/src/lint/option.dart';
 import 'package:flutter_hooks_lint_plugin/src/lint/exhaustive_keys.dart';
 
 import '../test/utils.dart';

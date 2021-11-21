@@ -1,7 +1,7 @@
 import 'package:analyzer/dart/ast/ast.dart';
 import 'package:analyzer/dart/ast/visitor.dart';
 import 'package:analyzer/dart/element/element.dart';
-import 'package:flutter_hooks_lint_plugin/src/lint/config.dart';
+import 'package:flutter_hooks_lint_plugin/src/lint/option.dart';
 import 'package:flutter_hooks_lint_plugin/src/lint/utils/cache.dart';
 import 'package:flutter_hooks_lint_plugin/src/lint/hook_widget_visitor.dart';
 import 'package:logging/logging.dart';
