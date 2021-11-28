@@ -26,8 +26,10 @@ class FlutterHooksRulesPlugin extends ServerPlugin {
   @override
   String get name => 'flutter_hooks_lint_plugin';
 
+  // NOTE: set the same version as the server
+  //  @see https://github.com/dart-lang/sdk/blob/e916841bcc5687e5fea4221d9fdbee2ccc3e412e/pkg/analyzer_plugin/lib/plugin/plugin.dart#L405
   @override
-  String get version => '0.1.0';
+  String get version => '1.0.0-alpha.0';
 
   @override
   AnalysisDriverGeneric createAnalysisDriver(plugin.ContextRoot contextRoot) {
