@@ -35,7 +35,7 @@ Add `flutter_hooks_lint_plugin` dependency to your `pubspec.yaml`:
 
 ```yaml
 dev_dependencies:
-  flutter_hooks_lint_plugin: ^0.1.0
+  flutter_hooks_lint_plugin: ^0.1.1
 ```
 
 Add `flutter_hooks_lint_plugin` plugin directive to your `analyzer_options.yaml`:

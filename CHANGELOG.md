@@ -1,3 +1,7 @@
+## 0.1.1
+
+- fix startup issue caused by server's compatibility check
+
 ## 0.1.0
 
 - add CLI support
