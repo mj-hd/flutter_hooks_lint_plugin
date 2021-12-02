@@ -1,3 +1,7 @@
+## 0.2.0
+
+- explicit support of excludes
+
 ## 0.1.1
 
 - fix startup issue caused by server's compatibility check

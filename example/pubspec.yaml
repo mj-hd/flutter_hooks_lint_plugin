@@ -14,7 +14,7 @@ dependencies:
   flutter_hooks: ^0.18.0
 
 dev_dependencies:
-  flutter_hooks_lint_plugin: ^0.1.1
+  flutter_hooks_lint_plugin: ^0.2.0
 
 flutter:
   uses-material-design: true
