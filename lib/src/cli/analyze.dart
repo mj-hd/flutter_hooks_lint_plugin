@@ -11,6 +11,7 @@ import 'package:flutter_hooks_lint_plugin/src/lint/exhaustive_keys.dart';
 import 'package:flutter_hooks_lint_plugin/src/lint/rules_of_hooks.dart';
 import 'package:flutter_hooks_lint_plugin/src/lint/utils/lint_error.dart';
 import 'package:flutter_hooks_lint_plugin/src/lint/utils/supression.dart';
+import 'package:glob/glob.dart';
 import 'package:logging/logging.dart';
 import 'package:yaml/yaml.dart';
 import 'package:path/path.dart' as path;
@@ -85,8 +86,11 @@ class AnalyzeCommand extends Command {
 
     final options = _loadOptions(context.contextRoot.optionsFile);
 
+    final excludeGlobs = options.analyzer.exclude.map((e) => Glob(e)).toList();
+
     for (final filePath in context.contextRoot.analyzedFiles()) {
       if (!filePath.endsWith('.dart')) continue;
+      if (excludeGlobs.any((e) => e.matches(filePath))) continue;
 
       log.finest('resolving for $filePath');
 
@@ -96,7 +100,7 @@ class AnalyzeCommand extends Command {
         log.finest('resolving for $filePath => Success');
 
         errors.addAll(
-          _check(filePath, result, options).map(
+          _check(filePath, result, options.flutterHooksLintPlugin).map(
             (err) => err.toReadableString(
               filePath,
               result.unit,
@@ -109,15 +113,15 @@ class AnalyzeCommand extends Command {
     return errors;
   }
 
-  FlutterHooksRulesPluginOptions _loadOptions(File? file) {
+  Options _loadOptions(File? file) {
     log.finer('_loadOptions(${file?.path})');
-    if (file == null) return FlutterHooksRulesPluginOptions();
+    if (file == null) return Options();
 
     final yaml = loadYaml(file.readAsStringSync());
 
     log.finest('_loadOptions(${file.path}) => $yaml');
 
-    return FlutterHooksRulesPluginOptions.fromYaml(yaml);
+    return Options.fromYaml(yaml);
   }
 
   List<LintError> _check(

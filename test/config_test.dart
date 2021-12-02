@@ -29,5 +29,28 @@ void main() {
         ),
       );
     });
+
+    test('analyzer exclude', () {
+      final source = '''
+        analyzer:
+          exclude:
+            - first
+            - second*
+            - third/*.dart
+      ''';
+
+      final yaml = loadYaml(source);
+
+      expect(
+        AnalyzerCommonOptions.fromYaml(yaml),
+        AnalyzerCommonOptions(
+          exclude: [
+            'first',
+            'second*',
+            'third/*.dart',
+          ],
+        ),
+      );
+    });
   });
 }

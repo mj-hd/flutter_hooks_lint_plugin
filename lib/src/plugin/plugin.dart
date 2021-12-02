@@ -11,8 +11,10 @@ import 'package:analyzer_plugin/protocol/protocol_generated.dart' as plugin;
 import 'package:flutter_hooks_lint_plugin/src/lint/config.dart';
 import 'package:flutter_hooks_lint_plugin/src/lint/exhaustive_keys.dart';
 import 'package:flutter_hooks_lint_plugin/src/lint/rules_of_hooks.dart';
+import 'package:flutter_hooks_lint_plugin/src/lint/utils/cache.dart';
 import 'package:flutter_hooks_lint_plugin/src/lint/utils/supression.dart';
 import 'package:flutter_hooks_lint_plugin/src/lint/utils/lint_error.dart';
+import 'package:glob/glob.dart';
 import 'package:yaml/yaml.dart';
 
 class FlutterHooksRulesPlugin extends ServerPlugin {
@@ -61,7 +63,7 @@ class FlutterHooksRulesPlugin extends ServerPlugin {
     final analysisContext = builder.createContext(contextRoot: locator.first);
     final context = analysisContext as DriverBasedAnalysisContext;
     final dartDriver = context.driver;
-    var options = FlutterHooksRulesPluginOptions();
+    var options = Options();
 
     try {
       options = _loadOptions(context.contextRoot.optionsFile);
@@ -107,15 +109,28 @@ class FlutterHooksRulesPlugin extends ServerPlugin {
     return dartDriver;
   }
 
+  List<Glob>? _excludeGlobs;
+  final Cache<String, bool> _excludeCache = Cache(5000);
+
   void _processResult(
     AnalysisDriver dartDriver,
     ResolvedUnitResult analysisResult,
-    FlutterHooksRulesPluginOptions options,
+    Options options,
   ) {
     final path = analysisResult.path;
 
+    _excludeGlobs ??= options.analyzer.exclude.map((e) => Glob(e)).toList();
+
+    final excluded = _excludeCache.doCache(
+      path,
+      () => _excludeGlobs!.any((e) => e.matches(path)),
+    );
+
+    if (excluded) return;
+
     try {
-      final errors = _check(dartDriver, path, analysisResult, options);
+      final errors = _check(
+          dartDriver, path, analysisResult, options.flutterHooksLintPlugin);
 
       channel.sendNotification(
         plugin.AnalysisErrorsParams(
@@ -186,12 +201,12 @@ class FlutterHooksRulesPlugin extends ServerPlugin {
     return errors;
   }
 
-  FlutterHooksRulesPluginOptions _loadOptions(File? file) {
-    if (file == null) return FlutterHooksRulesPluginOptions();
+  Options _loadOptions(File? file) {
+    if (file == null) return Options();
 
     final yaml = loadYaml(file.readAsStringSync());
 
-    return FlutterHooksRulesPluginOptions.fromYaml(yaml);
+    return Options.fromYaml(yaml);
   }
 
   // from https://github.com/dart-code-checker/dart-code-metrics/blob/e8e14d44b940a5b29d33a782432f853ee42ac7a0/lib/src/analyzer_plugin/analyzer_plugin.dart#L274
