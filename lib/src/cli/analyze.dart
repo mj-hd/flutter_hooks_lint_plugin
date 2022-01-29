@@ -10,7 +10,7 @@ import 'package:flutter_hooks_lint_plugin/src/lint/config.dart';
 import 'package:flutter_hooks_lint_plugin/src/lint/exhaustive_keys.dart';
 import 'package:flutter_hooks_lint_plugin/src/lint/rules_of_hooks.dart';
 import 'package:flutter_hooks_lint_plugin/src/lint/utils/lint_error.dart';
-import 'package:flutter_hooks_lint_plugin/src/lint/utils/supression.dart';
+import 'package:flutter_hooks_lint_plugin/src/lint/utils/suppression.dart';
 import 'package:glob/glob.dart';
 import 'package:logging/logging.dart';
 import 'package:yaml/yaml.dart';
@@ -133,7 +133,7 @@ class AnalyzeCommand extends Command {
 
     final errors = <LintError>[];
 
-    final supression = Supression(
+    final supression = Suppression(
       content: result.content,
       lineInfo: result.unit.lineInfo!,
     );
@@ -141,7 +141,7 @@ class AnalyzeCommand extends Command {
     void report(LintError err, [LintFix? fix]) {
       log.finest('report callback ($err, $fix)');
 
-      if (supression.isSupressedLintError(err)) {
+      if (supression.isSuppressedLintError(err)) {
         log.finest('report callback ($err, $fix) => Supressed');
         return;
       }

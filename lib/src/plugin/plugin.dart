@@ -12,7 +12,7 @@ import 'package:flutter_hooks_lint_plugin/src/lint/config.dart';
 import 'package:flutter_hooks_lint_plugin/src/lint/exhaustive_keys.dart';
 import 'package:flutter_hooks_lint_plugin/src/lint/rules_of_hooks.dart';
 import 'package:flutter_hooks_lint_plugin/src/lint/utils/cache.dart';
-import 'package:flutter_hooks_lint_plugin/src/lint/utils/supression.dart';
+import 'package:flutter_hooks_lint_plugin/src/lint/utils/suppression.dart';
 import 'package:flutter_hooks_lint_plugin/src/lint/utils/lint_error.dart';
 import 'package:glob/glob.dart';
 import 'package:yaml/yaml.dart';
@@ -157,13 +157,13 @@ class FlutterHooksRulesPlugin extends ServerPlugin {
   ) {
     final errors = <plugin.AnalysisErrorFixes>[];
 
-    final supression = Supression(
+    final supression = Suppression(
       content: analysisResult.content,
       lineInfo: analysisResult.unit.lineInfo!,
     );
 
     void report(LintError err, [LintFix? fix]) {
-      if (supression.isSupressedLintError(err)) {
+      if (supression.isSuppressedLintError(err)) {
         return;
       }
 

@@ -7,6 +7,7 @@ class LintError {
   const LintError({
     required this.message,
     required this.code,
+    this.key,
     this.ctxNode,
     required this.errNode,
   });
@@ -21,6 +22,7 @@ class LintError {
           (kind != null ? '($kind) ' : '') +
           'found. Add the key, or ignore this line. ',
       code: _exhaustiveKeysCode,
+      key: key,
       ctxNode: ctxNode,
       errNode: errNode,
     );
@@ -33,6 +35,7 @@ class LintError {
           (kind != null ? '($kind) ' : '') +
           'found. Remove the key, or ignore this line.',
       code: _exhaustiveKeysCode,
+      key: key,
       ctxNode: ctxNode,
       errNode: errNode,
     );
@@ -47,6 +50,7 @@ class LintError {
       message:
           "'$functionName' changes on every re-build. Move its definition inside the hook, or wrap with useCallback.",
       code: _exhaustiveKeysCode,
+      key: functionName,
       ctxNode: ctxNode,
       errNode: errNode,
     );
@@ -63,6 +67,7 @@ class LintError {
 
   final String message;
   final String code;
+  final String? key;
   final AstNode? ctxNode;
   final AstNode errNode;
 
