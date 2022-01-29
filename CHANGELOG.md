@@ -1,3 +1,8 @@
+## 0.3.0
+
+- support key specific suppression
+- bump dependencies
+
 ## 0.2.0
 
 - explicit support of excludes

@@ -1,7 +1,7 @@
 name: flutter_hooks_lint_plugin
 description: a lint plugin for flutter_hooks
 repository: https://github.com/mj-hd/flutter_hooks_lint_plugin
-version: 0.2.0
+version: 0.3.0
 
 environment:
   sdk: '>=2.14.0 <3.0.0'
