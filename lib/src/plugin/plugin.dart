@@ -89,7 +89,7 @@ class FlutterHooksRulesPlugin extends ServerPlugin {
           } else if (analysisResult is ErrorsResult) {
             channel.sendNotification(plugin.PluginErrorParams(
               false,
-              'ErrorResult ${analysisResult}',
+              'ErrorResult $analysisResult',
               '',
             ).toNotification());
           }
