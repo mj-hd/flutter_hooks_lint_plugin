@@ -128,7 +128,10 @@ class LintFix {
         edits: [
           plugin.SourceFileEdit(
             file,
-            analysisResult.libraryElement.source.modificationStamp,
+            // the value has no meanings, so use just 0 or -1
+            //   @see https://groups.google.com/a/dartlang.org/g/analyzer-discuss/c/lfRzX0yw3ZU
+            //   @see https://github.com/dart-code-checker/dart-code-metrics/blob/0813a54f2969dbaf5e00c6ae2c4ab1132a64580a/lib/src/analyzer_plugin/analyzer_plugin_utils.dart#L47
+            analysisResult.exists ? 0 : -1,
             edits: [
               plugin.SourceEdit(
                 node.beginToken.charOffset,

@@ -6,7 +6,7 @@ import 'utils.dart';
 Future<String?> _find(String source) async {
   final unit = await compileCode(source);
 
-  var hookName;
+  String? hookName;
 
   findRulesOfHooks(
     unit,
