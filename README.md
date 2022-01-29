@@ -67,6 +67,13 @@ flutter_hooks_lint_plugin:
       - useConstantValue
 ```
 
+## Suppress lints
+
+There are several ways to suppress lints:
+
+1. add `// ignore_for_file: exhaustive_keys, nested_hooks` to suppress lints in the entire file
+1. add `// ignore: exhaustive_keys, nested_hooks` to suppress lints at the next or current line
+1. add `// ignore_keys: foo, bar` to suppress lints for the specific keys at the next or current line
 
 ## CLI
 
