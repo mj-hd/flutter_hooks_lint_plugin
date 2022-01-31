@@ -1,3 +1,7 @@
+## 0.3.1
+
+- loosen dependencies
+
 ## 0.3.0
 
 - support key specific suppression
