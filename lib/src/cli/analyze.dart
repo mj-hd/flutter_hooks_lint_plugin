@@ -138,16 +138,16 @@ class AnalyzeCommand extends Command {
       lineInfo: result.unit.lineInfo!,
     );
 
-    void report(LintError err, [LintFix? fix]) {
-      log.finest('report callback ($err, $fix)');
+    void onReport(LintError err) {
+      log.finest('report callback ($err)');
 
       if (supression.isSuppressedLintError(err)) {
-        log.finest('report callback ($err, $fix) => Supressed');
+        log.finest('report callback ($err) => Supressed');
         return;
       }
 
       errors.add(err);
-      log.finest('report callback ($err, $fix) => reported ${err.code}');
+      log.finest('report callback ($err) => reported ${err.code}');
     }
 
     log.finest('find exhaustive_keys');
@@ -155,24 +155,14 @@ class AnalyzeCommand extends Command {
     findExhaustiveKeys(
       result.unit,
       options: options.exhaustiveKeys,
-      onMissingKeyReport: (key, kind, ctxNode, errNode) {
-        report(LintError.missingKey(key, kind, ctxNode, errNode));
-      },
-      onUnnecessaryKeyReport: (key, kind, ctxNode, errNode) {
-        report(LintError.unnecessaryKey(key, kind, ctxNode, errNode));
-      },
-      onFunctionKeyReport: (key, _, ctxNode, errNode) {
-        report(LintError.functionKey(key, ctxNode, errNode));
-      },
+      onReport: onReport,
     );
 
     log.finest('find rules_of_hooks');
 
     findRulesOfHooks(
       result.unit,
-      onNestedHooksReport: (hookName, node) {
-        report(LintError.nestedHooks(hookName, node));
-      },
+      onReport: onReport,
     );
 
     return errors;

@@ -1,5 +1,6 @@
 import 'package:analyzer/dart/analysis/results.dart';
 import 'package:analyzer/dart/ast/ast.dart';
+import 'package:analyzer/dart/ast/token.dart';
 import 'package:analyzer_plugin/protocol/protocol_common.dart' as plugin;
 import 'package:analyzer_plugin/protocol/protocol_generated.dart' as plugin;
 
@@ -10,76 +11,32 @@ class LintError {
     this.key,
     this.ctxNode,
     required this.errNode,
+    this.fixes = const [],
   });
-
-  static final String _exhaustiveKeysCode = 'exhaustive_keys';
-  static final String _nestedHooks = 'nested_hooks';
-
-  factory LintError.missingKey(
-      String key, String? kind, AstNode? ctxNode, AstNode errNode) {
-    return LintError(
-      message: "Missing key '$key' " +
-          (kind != null ? '($kind) ' : '') +
-          'found. Add the key, or ignore this line. ',
-      code: _exhaustiveKeysCode,
-      key: key,
-      ctxNode: ctxNode,
-      errNode: errNode,
-    );
-  }
-
-  factory LintError.unnecessaryKey(
-      String key, String? kind, AstNode? ctxNode, AstNode errNode) {
-    return LintError(
-      message: "Unnecessary key '$key' " +
-          (kind != null ? '($kind) ' : '') +
-          'found. Remove the key, or ignore this line.',
-      code: _exhaustiveKeysCode,
-      key: key,
-      ctxNode: ctxNode,
-      errNode: errNode,
-    );
-  }
-
-  factory LintError.functionKey(
-    String functionName,
-    AstNode? ctxNode,
-    AstNode errNode,
-  ) {
-    return LintError(
-      message:
-          "'$functionName' changes on every re-build. Move its definition inside the hook, or wrap with useCallback.",
-      code: _exhaustiveKeysCode,
-      key: functionName,
-      ctxNode: ctxNode,
-      errNode: errNode,
-    );
-  }
-
-  factory LintError.nestedHooks(String hookName, AstNode node) {
-    return LintError(
-      message:
-          'Avoid nested use of $hookName. Hooks must be used in top-level scope of the build function.',
-      code: _nestedHooks,
-      errNode: node,
-    );
-  }
 
   final String message;
   final String code;
   final String? key;
   final AstNode? ctxNode;
   final AstNode errNode;
+  final List<LintFix> fixes;
 
-  plugin.AnalysisError toAnalysisError(String file, CompilationUnit unit) {
-    final location = _toLocation(errNode, file, unit);
+  plugin.AnalysisErrorFixes toAnalysisErrorFixes(
+    String file,
+    ResolvedUnitResult result,
+  ) {
+    final location = _toLocation(errNode, file, result.unit);
 
-    return plugin.AnalysisError(
-      plugin.AnalysisErrorSeverity.INFO,
-      plugin.AnalysisErrorType.LINT,
-      location,
-      message,
-      code,
+    return plugin.AnalysisErrorFixes(
+      plugin.AnalysisError(
+        plugin.AnalysisErrorSeverity.INFO,
+        plugin.AnalysisErrorType.LINT,
+        location,
+        message,
+        code,
+        hasFix: fixes.isNotEmpty,
+      ),
+      fixes: fixes.map((f) => f.toAnalysisFix(file, result)).toList(),
     );
   }
 
@@ -109,18 +66,128 @@ class LintError {
       ${ctxNode?.toSource() ?? errNode.toSource()}
     ''';
   }
+
+  @override
+  String toString() {
+    return [
+      'message: $message',
+      'code: $code',
+      if (key != null) 'key: $key',
+      if (ctxNode != null) 'ctxNode: ${ctxNode!.toSource()}',
+      'errNode: ${errNode.toSource()}',
+      if (fixes.isNotEmpty)
+        'fixes: ${fixes.map((e) => '"${e.value}"').join(', ')}'
+    ].join(', ');
+  }
 }
 
 class LintFix {
   const LintFix({
     required this.message,
-    required this.node,
-    required this.replacement,
+    required this.start,
+    required this.length,
+    required this.value,
   });
 
+  LintFix.replaceNode({
+    required this.message,
+    required AstNode node,
+    required this.value,
+  })  : start = node.beginToken.charOffset,
+        length = node.length;
+
+  LintFix.insert({
+    required this.message,
+    required this.start,
+    required this.value,
+  }) : length = 0;
+
+  LintFix.removeNode({
+    required this.message,
+    required AstNode node,
+  })  : start = node.beginToken.charOffset,
+        length = node.length,
+        value = '';
+
+  factory LintFix.appendListElement({
+    required String message,
+    required ListLiteral literal,
+    required String element,
+  }) {
+    final commaOffset = _findLastComma(literal.endToken, literal.beginToken);
+
+    if (commaOffset == null) {
+      return LintFix.insert(
+        message: message,
+        start: literal.endToken.charOffset,
+        value: (literal.elements.isNotEmpty ? ', ' : '') + element,
+      );
+    }
+
+    return LintFix.insert(
+      message: message,
+      start: commaOffset + 1,
+      value: ' $element,',
+    );
+  }
+
+  factory LintFix.removeListElement({
+    required String message,
+    required ListLiteral literal,
+    required AstNode element,
+  }) {
+    final commaOffset = _findNextComma(element.endToken, literal.endToken);
+
+    if (commaOffset != null) {
+      return LintFix(
+        message: message,
+        start: element.beginToken.charOffset,
+        length: commaOffset - element.beginToken.charOffset + 1,
+        value: '',
+      );
+    }
+
+    return LintFix.removeNode(
+      message: message,
+      node: element,
+    );
+  }
+
+  factory LintFix.appendFunctionParam({
+    required String message,
+    required MethodInvocation literal,
+    required String param,
+  }) {
+    if (literal.argumentList.arguments.isEmpty) {
+      return LintFix.insert(
+        message: message,
+        start: literal.endToken.charOffset,
+        value: param,
+      );
+    }
+
+    final firstParam = literal.argumentList.arguments[0];
+    final commaOffset = _findLastComma(literal.endToken, firstParam.endToken);
+
+    if (commaOffset == null) {
+      return LintFix.insert(
+        message: message,
+        start: literal.endToken.charOffset,
+        value: ', $param',
+      );
+    }
+
+    return LintFix.insert(
+      message: message,
+      start: commaOffset + 1,
+      value: ' $param,',
+    );
+  }
+
   final String message;
-  final AstNode node;
-  final String replacement;
+  final int start;
+  final int length;
+  final String value;
 
   plugin.PrioritizedSourceChange toAnalysisFix(
     String file,
@@ -139,9 +206,9 @@ class LintFix {
             analysisResult.exists ? 0 : -1,
             edits: [
               plugin.SourceEdit(
-                node.beginToken.charOffset,
-                node.length,
-                replacement,
+                start,
+                length,
+                value,
               ),
             ],
           ),
@@ -149,4 +216,33 @@ class LintFix {
       ),
     );
   }
+}
+
+int? _findNearestComma(
+    Token beginToken, Token endToken, Token? Function(Token?) next) {
+  Token? token = beginToken;
+
+  while ((token = next(token)) != endToken) {
+    switch (token?.type) {
+      case TokenType.COMMA:
+        return token!.charOffset;
+
+      case TokenType.MULTI_LINE_COMMENT:
+      case TokenType.SINGLE_LINE_COMMENT:
+        continue;
+
+      default:
+        return null;
+    }
+  }
+
+  return null;
+}
+
+int? _findNextComma(Token beginToken, Token endToken) {
+  return _findNearestComma(beginToken, endToken, (token) => token?.next);
+}
+
+int? _findLastComma(Token beginToken, Token endToken) {
+  return _findNearestComma(beginToken, endToken, (token) => token?.previous);
 }
