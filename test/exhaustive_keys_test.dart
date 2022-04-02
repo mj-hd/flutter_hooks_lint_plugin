@@ -1,78 +1,28 @@
 import 'package:flutter_hooks_lint_plugin/src/lint/config.dart';
 import 'package:flutter_hooks_lint_plugin/src/lint/exhaustive_keys.dart';
+import 'package:flutter_hooks_lint_plugin/src/lint/utils/lint_error.dart';
 import 'package:test/test.dart';
 
+import 'matcher.dart';
 import 'utils.dart';
 
-class _FoundKey {
-  _FoundKey(this.name, this.kind);
-
-  final String name;
-  final String? kind;
-
-  @override
-  String toString() {
-    return 'Key $name $kind';
-  }
-
-  @override
-  bool operator ==(Object other) =>
-      other is _FoundKey && name == other.name && kind == other.kind;
-
-  @override
-  int get hashCode => name.hashCode ^ kind.hashCode;
-}
-
-class _TestResult {
-  final missingKeys = <_FoundKey>[];
-  final unnecessaryKeys = <_FoundKey>[];
-  final functionKeys = <_FoundKey>[];
-}
-
-Future<_TestResult> _find(
+Future<List<LintError>> _findErrors(
   String source, [
   ExhaustiveKeysOptions? options,
 ]) async {
   final unit = await compileCode(source);
 
-  final result = _TestResult();
+  final result = <LintError>[];
 
   findExhaustiveKeys(
     unit,
     options: options ?? ExhaustiveKeysOptions(),
-    onMissingKeyReport: (key, kind, _, __) {
-      result.missingKeys.add(_FoundKey(key, kind));
-    },
-    onUnnecessaryKeyReport: (key, kind, _, __) {
-      result.unnecessaryKeys.add(_FoundKey(key, kind));
-    },
-    onFunctionKeyReport: (key, kind, _, __) {
-      result.functionKeys.add(_FoundKey(key, kind));
+    onReport: (err) {
+      result.add(err);
     },
   );
 
   return result;
-}
-
-Future<List<_FoundKey>> _findMissingKeys(
-  String source, [
-  ExhaustiveKeysOptions? options,
-]) async {
-  return (await _find(source, options)).missingKeys;
-}
-
-Future<List<_FoundKey>> _findUnnecessaryKeys(
-  String source, [
-  ExhaustiveKeysOptions? options,
-]) async {
-  return (await _find(source, options)).unnecessaryKeys;
-}
-
-Future<List<_FoundKey>> _findFunctionKeys(
-  String source, [
-  ExhaustiveKeysOptions? options,
-]) async {
-  return (await _find(source, options)).functionKeys;
 }
 
 void main() {
@@ -100,9 +50,9 @@ void main() {
         }
       ''';
 
-      final keys = await _findMissingKeys(source);
+      final errors = await _findErrors(source);
 
-      expect(keys, [_FoundKey('dep', 'class field')]);
+      expect(errors, [LintErrorMissingKeyMatcher('dep', 'class field')]);
     });
 
     test('report local variable reference', () async {
@@ -127,9 +77,9 @@ void main() {
         }
       ''';
 
-      final keys = await _findMissingKeys(source);
+      final errors = await _findErrors(source);
 
-      expect(keys, [_FoundKey('dep', 'local variable')]);
+      expect(errors, [LintErrorMissingKeyMatcher('dep', 'local variable')]);
     });
 
     test('report local function reference', () async {
@@ -156,9 +106,9 @@ void main() {
         }
       ''';
 
-      final keys = await _findMissingKeys(source);
+      final errors = await _findErrors(source);
 
-      expect(keys, [_FoundKey('dep', 'local function')]);
+      expect(errors, [LintErrorMissingKeyMatcher('dep', 'local function')]);
     });
 
     test('ignore useEffect without keys', () async {
@@ -182,9 +132,9 @@ void main() {
         }
       ''';
 
-      final keys = await _findMissingKeys(source);
+      final errors = await _findErrors(source);
 
-      expect(keys, []);
+      expect(errors, []);
     });
 
     test('report hooks with keys', () async {
@@ -218,18 +168,18 @@ void main() {
         }
       ''';
 
-      final keys = await _findMissingKeys(source);
+      final errors = await _findErrors(source);
 
-      expect(keys, [
-        _FoundKey('val1', 'local variable'),
-        _FoundKey('val2', 'local variable'),
-        _FoundKey('val3', 'local variable'),
-        _FoundKey('val4', 'local variable'),
-        _FoundKey('val5', 'local variable'),
-        _FoundKey('val6', 'local variable'),
-        _FoundKey('val7', 'local variable'),
-        _FoundKey('val8', 'local variable'),
-        _FoundKey('val9', 'local variable'),
+      expect(errors, [
+        LintErrorMissingKeyMatcher('val1', 'local variable'),
+        LintErrorMissingKeyMatcher('val2', 'local variable'),
+        LintErrorMissingKeyMatcher('val3', 'local variable'),
+        LintErrorMissingKeyMatcher('val4', 'local variable'),
+        LintErrorMissingKeyMatcher('val5', 'local variable'),
+        LintErrorMissingKeyMatcher('val6', 'local variable'),
+        LintErrorMissingKeyMatcher('val7', 'local variable'),
+        LintErrorMissingKeyMatcher('val8', 'local variable'),
+        LintErrorMissingKeyMatcher('val9', 'local variable'),
       ]);
     });
 
@@ -261,9 +211,9 @@ void main() {
         }
       ''';
 
-      final keys = await _findMissingKeys(source);
+      final errors = await _findErrors(source);
 
-      expect(keys, []);
+      expect(errors, []);
     });
 
     test('ignore hooks without keys', () async {
@@ -294,9 +244,9 @@ void main() {
         }
       ''';
 
-      final keys = await _findMissingKeys(source);
+      final errors = await _findErrors(source);
 
-      expect(keys, []);
+      expect(errors, []);
     });
 
     test('report useCallback', () async {
@@ -320,9 +270,9 @@ void main() {
         }
       ''';
 
-      final keys = await _findMissingKeys(source);
+      final errors = await _findErrors(source);
 
-      expect(keys, [_FoundKey('dep', 'class field')]);
+      expect(errors, [LintErrorMissingKeyMatcher('dep', 'class field')]);
     });
 
     test('report hooks in a custom hook', () async {
@@ -346,11 +296,11 @@ void main() {
         }
       ''';
 
-      final keys = await _findMissingKeys(source);
+      final errors = await _findErrors(source);
 
-      expect(keys, [
-        _FoundKey('value', 'function parameter'),
-        _FoundKey('length', 'local variable'),
+      expect(errors, [
+        LintErrorMissingKeyMatcher('value', 'function parameter'),
+        LintErrorMissingKeyMatcher('length', 'local variable'),
       ]);
     });
 
@@ -382,9 +332,9 @@ void main() {
         }
       ''';
 
-      final keys = await _findMissingKeys(source);
+      final errors = await _findErrors(source);
 
-      expect(keys, [_FoundKey('controller', 'class field')]);
+      expect(errors, [LintErrorMissingKeyMatcher('controller', 'class field')]);
     });
 
     test('report optional dotted value', () async {
@@ -408,9 +358,9 @@ void main() {
         }
       ''';
 
-      final keys = await _findMissingKeys(source);
+      final errors = await _findErrors(source);
 
-      expect(keys, [_FoundKey('list', 'class field')]);
+      expect(errors, [LintErrorMissingKeyMatcher('list', 'class field')]);
     });
 
     test('ignore value notifier', () async {
@@ -434,9 +384,9 @@ void main() {
         }
       ''';
 
-      final keys = await _findMissingKeys(source);
+      final errors = await _findErrors(source);
 
-      expect(keys, []);
+      expect(errors, []);
     });
 
     test('ignore useState value reference', () async {
@@ -457,9 +407,9 @@ void main() {
         }
       ''';
 
-      final keys = await _findMissingKeys(source);
+      final errors = await _findErrors(source);
 
-      expect(keys, []);
+      expect(errors, []);
     });
 
     test('ignore default constantHooks value reference', () async {
@@ -486,9 +436,9 @@ void main() {
         }
       ''';
 
-      final keys = await _findMissingKeys(source);
+      final errors = await _findErrors(source);
 
-      expect(keys, []);
+      expect(errors, []);
     });
 
     test('ignore option specified constantHooks value reference', () async {
@@ -507,7 +457,7 @@ void main() {
         }
       ''';
 
-      final keys = await _findMissingKeys(
+      final errors = await _findErrors(
         source,
         ExhaustiveKeysOptions(
           constantHooks: [
@@ -516,7 +466,7 @@ void main() {
         ),
       );
 
-      expect(keys, []);
+      expect(errors, []);
     });
 
     test('ignore local const reference', () async {
@@ -535,9 +485,9 @@ void main() {
         }
       ''';
 
-      final keys = await _findMissingKeys(source);
+      final errors = await _findErrors(source);
 
-      expect(keys, []);
+      expect(errors, []);
     });
 
     test('ignore top-level const reference', () async {
@@ -556,9 +506,9 @@ void main() {
         }
       ''';
 
-      final keys = await _findMissingKeys(source);
+      final errors = await _findErrors(source);
 
-      expect(keys, []);
+      expect(errors, []);
     });
 
     test('ignore library reference', () async {
@@ -577,9 +527,127 @@ void main() {
         }
       ''';
 
-      final keys = await _findMissingKeys(source);
+      final errors = await _findErrors(source);
 
-      expect(keys, []);
+      expect(errors, []);
+    });
+
+    test('suggest to add keys param with leading comma', () async {
+      final source = '''
+        class TestWidget extends HookWidget {
+          const TestWidget({
+            Key? key,
+            required this.dep,
+          }): super(key: key);
+
+          final String dep;
+
+          @override
+          Widget build(BuildContext context) {
+            final test = useMemoized(() {
+              return dep;
+            });
+
+            return Text(test);
+          }
+        }
+      ''';
+
+      final errors = await _findErrors(source);
+
+      expect(errors, [
+        LintErrorMatcher.fixes([', [dep]']),
+      ]);
+    });
+
+    test('suggest to add keys param with trailing comma', () async {
+      final source = '''
+        class TestWidget extends HookWidget {
+          const TestWidget({
+            Key? key,
+            required this.dep,
+          }): super(key: key);
+
+          final String dep;
+
+          @override
+          Widget build(BuildContext context) {
+            final test = useMemoized(
+              () {
+                return dep;
+              },
+            );
+
+            return Text(test);
+          }
+        }
+      ''';
+
+      final errors = await _findErrors(source);
+
+      expect(errors, [
+        LintErrorMatcher.fixes([' [dep],']),
+      ]);
+    });
+
+    test('suggest to append key with leading comma', () async {
+      final source = '''
+        class TestWidget extends HookWidget {
+          const TestWidget({
+            Key? key,
+            required this.dep,
+          }): super(key: key);
+
+          final String dep1;
+          final String dep2;
+
+          @override
+          Widget build(BuildContext context) {
+            useEffect(() {
+              print(dep1 + dep2);
+            }, [dep1]);
+
+            return Text('TestWidget');
+          }
+        }
+      ''';
+
+      final errors = await _findErrors(source);
+
+      expect(errors, [
+        LintErrorMatcher.fixes([', dep2']),
+      ]);
+    });
+
+    test('suggest to append key with trailing comma', () async {
+      final source = '''
+        class TestWidget extends HookWidget {
+          const TestWidget({
+            Key? key,
+            required this.dep,
+          }): super(key: key);
+
+          final String dep1;
+          final String dep2;
+
+          @override
+          Widget build(BuildContext context) {
+            useEffect(() {
+              print(dep1 + dep2);
+            }, [
+              dep1,
+            ]);
+
+            return Text('TestWidget');
+          }
+        }
+      ''';
+
+      final errors = await _findErrors(source);
+
+      expect(errors, [
+        LintErrorMatcher.fixes([' dep2,']),
+      ]);
     });
   });
 
@@ -602,9 +670,9 @@ void main() {
         }
       ''';
 
-      final keys = await _findUnnecessaryKeys(source);
+      final errors = await _findErrors(source);
 
-      expect(keys, [_FoundKey('dep', 'local variable')]);
+      expect(errors, [LintErrorUnnecessaryKeyMatcher('dep', 'local variable')]);
     });
 
     test('report useState notifier reference', () async {
@@ -623,9 +691,10 @@ void main() {
         }
       ''';
 
-      final keys = await _findUnnecessaryKeys(source);
+      final errors = await _findErrors(source);
 
-      expect(keys, [_FoundKey('state', 'state variable')]);
+      expect(
+          errors, [LintErrorUnnecessaryKeyMatcher('state', 'state variable')]);
     });
 
     test('ignore useState value reference', () async {
@@ -646,9 +715,9 @@ void main() {
         }
       ''';
 
-      final keys = await _findUnnecessaryKeys(source);
+      final errors = await _findErrors(source);
 
-      expect(keys, []);
+      expect(errors, []);
     });
 
     test('ignore dotted value', () async {
@@ -674,9 +743,9 @@ void main() {
         }
       ''';
 
-      final keys = await _findUnnecessaryKeys(source);
+      final errors = await _findErrors(source);
 
-      expect(keys, []);
+      expect(errors, []);
     });
 
     test('ignore complex dotted value', () async {
@@ -707,9 +776,9 @@ void main() {
         }
       ''';
 
-      final keys = await _findUnnecessaryKeys(source);
+      final errors = await _findErrors(source);
 
-      expect(keys, []);
+      expect(errors, []);
     });
 
     test('ignore optional dotted value exists in keys full expression',
@@ -734,9 +803,9 @@ void main() {
         }
       ''';
 
-      final keys = await _findUnnecessaryKeys(source);
+      final errors = await _findErrors(source);
 
-      expect(keys, []);
+      expect(errors, []);
     });
 
     test('ignore optional dotted value exists in keys short expression',
@@ -761,9 +830,9 @@ void main() {
         }
       ''';
 
-      final keys = await _findUnnecessaryKeys(source);
+      final errors = await _findErrors(source);
 
-      expect(keys, []);
+      expect(errors, []);
     });
   });
 
@@ -790,9 +859,9 @@ void main() {
         }
       ''';
 
-      final keys = await _findFunctionKeys(source);
+      final errors = await _findErrors(source);
 
-      expect(keys, [_FoundKey('listener', 'local function')]);
+      expect(errors, [LintErrorFunctionKeyMatcher('listener')]);
     });
   });
 }

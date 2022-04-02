@@ -1,21 +1,23 @@
 import 'package:flutter_hooks_lint_plugin/src/lint/rules_of_hooks.dart';
+import 'package:flutter_hooks_lint_plugin/src/lint/utils/lint_error.dart';
 import 'package:test/test.dart';
 
+import 'matcher.dart';
 import 'utils.dart';
 
-Future<String?> _find(String source) async {
+Future<LintError?> _findError(String source) async {
   final unit = await compileCode(source);
 
-  String? hookName;
+  LintError? result;
 
   findRulesOfHooks(
     unit,
-    onNestedHooksReport: (name, node) {
-      hookName = name;
+    onReport: (err) {
+      result = err;
     },
   );
 
-  return hookName;
+  return result;
 }
 
 void main() {
@@ -45,9 +47,9 @@ void main() {
         }
       ''';
 
-      final hookName = await _find(source);
+      final error = await _findError(source);
 
-      expect(hookName, 'useEffect');
+      expect(error, LintErrorNestedHooksMatcher('useEffect'));
     });
 
     test('report use of useEffect inside a block omitted if-statement',
@@ -70,9 +72,9 @@ void main() {
         }
       ''';
 
-      final hookName = await _find(source);
+      final error = await _findError(source);
 
-      expect(hookName, 'useEffect');
+      expect(error, LintErrorNestedHooksMatcher('useEffect'));
     });
 
     test('report use of useEffect inside a switch-statement', () async {
@@ -100,9 +102,9 @@ void main() {
         }
       ''';
 
-      final hookName = await _find(source);
+      final error = await _findError(source);
 
-      expect(hookName, 'useEffect');
+      expect(error, LintErrorNestedHooksMatcher('useEffect'));
     });
 
     test('report use of useEffect inside a for-statement', () async {
@@ -128,9 +130,9 @@ void main() {
         }
       ''';
 
-      final hookName = await _find(source);
+      final error = await _findError(source);
 
-      expect(hookName, 'useEffect');
+      expect(error, LintErrorNestedHooksMatcher('useEffect'));
     });
 
     test('report use of useEffect inside a while-statement', () async {
@@ -156,9 +158,9 @@ void main() {
         }
       ''';
 
-      final hookName = await _find(source);
+      final error = await _findError(source);
 
-      expect(hookName, 'useEffect');
+      expect(error, LintErrorNestedHooksMatcher('useEffect'));
     });
 
     test('report use of useEffect inside a do-statement', () async {
@@ -184,9 +186,9 @@ void main() {
         }
       ''';
 
-      final hookName = await _find(source);
+      final error = await _findError(source);
 
-      expect(hookName, 'useEffect');
+      expect(error, LintErrorNestedHooksMatcher('useEffect'));
     });
 
     test('report use of useEffect with iterable', () async {
@@ -210,9 +212,9 @@ void main() {
         }
       ''';
 
-      final hookName = await _find(source);
+      final error = await _findError(source);
 
-      expect(hookName, 'useEffect');
+      expect(error, LintErrorNestedHooksMatcher('useEffect'));
     });
 
     test('report use of useEffect inside a function declaration', () async {
@@ -240,9 +242,9 @@ void main() {
         }
       ''';
 
-      final hookName = await _find(source);
+      final error = await _findError(source);
 
-      expect(hookName, 'useEffect');
+      expect(error, LintErrorNestedHooksMatcher('useEffect'));
     });
 
     test('ignore top-level use of useEffect', () async {
@@ -270,9 +272,9 @@ void main() {
         }
       ''';
 
-      final hookName = await _find(source);
+      final error = await _findError(source);
 
-      expect(hookName, isNull);
+      expect(error, isNull);
     });
   });
 }

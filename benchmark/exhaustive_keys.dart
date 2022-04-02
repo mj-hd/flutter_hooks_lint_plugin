@@ -19,9 +19,7 @@ class ExhaustiveKeysBenchmark extends BenchmarkBase {
     findExhaustiveKeys(
       unit,
       options: ExhaustiveKeysOptions(),
-      onMissingKeyReport: (_, __, ___, ____) {},
-      onUnnecessaryKeyReport: (_, __, ___, ____) {},
-      onFunctionKeyReport: (_, __, ___, ____) {},
+      onReport: (_) {},
     );
   }
 

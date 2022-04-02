@@ -1,13 +1,14 @@
 import 'package:analyzer/dart/ast/ast.dart';
 import 'package:analyzer/dart/ast/visitor.dart';
 import 'package:flutter_hooks_lint_plugin/src/lint/hook_widget_visitor.dart';
+import 'package:flutter_hooks_lint_plugin/src/lint/utils/lint_error.dart';
 import 'package:logging/logging.dart';
 
 final log = Logger('rules_of_hooks');
 
 void findRulesOfHooks(
   CompilationUnit unit, {
-  required void Function(String, AstNode) onNestedHooksReport,
+  required void Function(LintError) onReport,
 }) {
   log.finer('findRulesOfHooks');
 
@@ -18,7 +19,7 @@ void findRulesOfHooks(
         node.visitChildren(
           _HooksInvocationVisitor(
             context: context,
-            onNestedHooksReport: onNestedHooksReport,
+            onReport: onReport,
           ),
         );
       },
@@ -26,23 +27,37 @@ void findRulesOfHooks(
   );
 }
 
+class LintErrorNestedHooks extends LintError {
+  static const _nestedHooksCode = 'nested_hooks';
+
+  LintErrorNestedHooks(this.hookName, AstNode errNode)
+      : super(
+          message:
+              'Avoid nested use of $hookName. Hooks must be used in top-level scope of the build function.',
+          code: _nestedHooksCode,
+          errNode: errNode,
+        );
+
+  final String hookName;
+}
+
 class _Context {}
 
 class _HooksInvocationVisitor extends RecursiveAstVisitor<void> {
   _HooksInvocationVisitor({
     required this.context,
-    required this.onNestedHooksReport,
+    required this.onReport,
   });
 
   final _Context context;
-  final void Function(String, AstNode) onNestedHooksReport;
+  final void Function(LintError) onReport;
 
   @override
   void visitMethodInvocation(MethodInvocation node) {
     if (!node.methodName.name.startsWith('use')) {
       node.visitChildren(_HooksInvocationVisitor(
         context: context,
-        onNestedHooksReport: onNestedHooksReport,
+        onReport: onReport,
       ));
       return;
     }
@@ -50,7 +65,7 @@ class _HooksInvocationVisitor extends RecursiveAstVisitor<void> {
     log.finer('_HooksInvocationVisitor: visit($node)');
 
     if (_findControlFlow(node.parent)) {
-      onNestedHooksReport(node.methodName.name, node);
+      onReport(LintErrorNestedHooks(node.methodName.name, node));
     }
   }
 

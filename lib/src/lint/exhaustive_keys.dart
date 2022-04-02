@@ -4,23 +4,17 @@ import 'package:analyzer/dart/element/element.dart';
 import 'package:flutter_hooks_lint_plugin/src/lint/config.dart';
 import 'package:flutter_hooks_lint_plugin/src/lint/utils/cache.dart';
 import 'package:flutter_hooks_lint_plugin/src/lint/hook_widget_visitor.dart';
+import 'package:flutter_hooks_lint_plugin/src/lint/utils/lint_error.dart';
 import 'package:logging/logging.dart';
 
 final log = Logger('exhaustive_keys');
 
-typedef ExhaustiveKeysReportCallback = void Function(
-  String keyName,
-  String? kind,
-  AstNode? ctxNode,
-  AstNode errNode,
-);
+const _exhaustiveKeysCode = 'exhaustive_keys';
 
 void findExhaustiveKeys(
   CompilationUnit unit, {
   required ExhaustiveKeysOptions options,
-  required ExhaustiveKeysReportCallback onMissingKeyReport,
-  required ExhaustiveKeysReportCallback onUnnecessaryKeyReport,
-  required ExhaustiveKeysReportCallback onFunctionKeyReport,
+  required void Function(LintError) onReport,
 }) {
   log.finer('findExhaustiveKeys');
 
@@ -38,9 +32,7 @@ void findExhaustiveKeys(
 
     final hooksVisitor = _HooksVisitor(
       context: context,
-      onMissingKeyReport: onMissingKeyReport,
-      onUnnecessaryKeyReport: onUnnecessaryKeyReport,
-      onFunctionKeyReport: onFunctionKeyReport,
+      onReport: onReport,
     );
 
     node.visitChildren(hooksVisitor);
@@ -68,6 +60,63 @@ void findExhaustiveKeys(
       },
     ),
   );
+}
+
+class LintErrorMissingKey extends LintError {
+  LintErrorMissingKey(
+    String key, {
+    required AstNode ctxNode,
+    required AstNode errNode,
+    required this.kindStr,
+    required List<LintFix> fixes,
+  }) : super(
+          message: "Missing key '$key' " +
+              (kindStr != null ? '($kindStr) ' : '') +
+              'found. Add the key, or ignore this line.',
+          code: _exhaustiveKeysCode,
+          key: key,
+          ctxNode: ctxNode,
+          errNode: errNode,
+          fixes: fixes,
+        );
+
+  final String? kindStr;
+}
+
+class LintErrorUnnecessaryKey extends LintError {
+  LintErrorUnnecessaryKey(
+    String key, {
+    required AstNode ctxNode,
+    required AstNode errNode,
+    required this.kindStr,
+    required List<LintFix> fixes,
+  }) : super(
+          message: "Unnecessary key '$key' " +
+              (kindStr != null ? '($kindStr) ' : '') +
+              'found. Remove the key, or ignore this line.',
+          code: _exhaustiveKeysCode,
+          key: key,
+          ctxNode: ctxNode,
+          errNode: errNode,
+          fixes: fixes,
+        );
+
+  final String? kindStr;
+}
+
+class LintErrorFunctionKey extends LintError {
+  LintErrorFunctionKey(
+    String key, {
+    required AstNode ctxNode,
+    required AstNode errNode,
+  }) : super(
+          message:
+              "'$key' changes on every re-build. Move its definition inside the hook, or wrap with useCallback.",
+          key: key,
+          code: _exhaustiveKeysCode,
+          ctxNode: ctxNode,
+          errNode: errNode,
+        );
 }
 
 enum KeyKind {
@@ -446,137 +495,226 @@ class _LocalFunctionVisitor extends SimpleAstVisitor<void> {
   }
 }
 
+enum _HookType {
+  unknown,
+  omittedPositionalKeys,
+  positionalKeysExpression,
+  positionalKeysLiteral,
+  // omittedNamedKeys,
+  // namedKeys,
+}
+
 class _HooksVisitor extends RecursiveAstVisitor<void> {
   _HooksVisitor({
     required this.context,
-    required this.onMissingKeyReport,
-    required this.onUnnecessaryKeyReport,
-    required this.onFunctionKeyReport,
+    required this.onReport,
   });
 
   final _Context context;
 
-  final ExhaustiveKeysReportCallback onMissingKeyReport;
-  final ExhaustiveKeysReportCallback onUnnecessaryKeyReport;
-  final ExhaustiveKeysReportCallback onFunctionKeyReport;
+  final void Function(LintError) onReport;
 
   @override
   void visitMethodInvocation(MethodInvocation node) {
     log.finer('_HooksVisitor: visitMethodInvocation($node)');
 
+    final arguments = node.argumentList.arguments;
+
+    _HookType type = _HookType.unknown;
+
     switch (node.methodName.name) {
       case 'useEffect':
       case 'useMemoized':
       case 'useCallback':
-        log.finest('_HooksVisitor: hooks found');
-
-        final actualKeys = <Key>[];
-        final expectedKeys = <Key>[];
-
-        final arguments = node.argumentList.arguments;
-
-        // find identifiers in the hook's keys
         if (arguments.isNotEmpty) {
-          // useMemoized(() => ...);
+          // useMemoized(() { ... });
           if (arguments.length == 1) {
-            log.finest('_HooksVisitor: hooks without keys');
+            log.finest('_HooksVisitor: hooks with omitted positional keys');
+            type = _HookType.omittedPositionalKeys;
 
             // useEffect(() { ... });
             if (node.methodName.name == 'useEffect') {
-              log.finest('_HooksVisitor: useEffect without keys');
+              log.finest(
+                  '_HooksVisitor: useEffect with omitted positional keys');
               return;
             }
           }
 
           // useEffect(() { ... }, ...);
           if (arguments.length == 2) {
-            log.finest('_HooksVisitor: hooks with keys');
+            log.finest('_HooksVisitor: hooks with positional keys');
+            type = _HookType.positionalKeysExpression;
 
             final keys = arguments[1];
 
             // useEffect(() { ... }, [...]);
             if (keys is ListLiteral) {
-              log.finest('_HooksVisitor: hooks with list keys');
-
-              final visitor = _KeysIdentifierVisitor(
-                context: context,
-              );
-
-              keys.visitChildren(visitor);
-
-              actualKeys.addAll(visitor.keys);
-
-              log.finest('_HooksVisitor: actual keys $actualKeys');
-            }
-          }
-
-          if (context.isNotEmpty) {
-            // find identifiers in the hook body
-            final visitor = _KeysIdentifierVisitor(
-              context: context,
-              onlyBuildVaribles: true,
-            );
-
-            final body = arguments[0];
-            body.visitChildren(visitor);
-
-            expectedKeys.addAll(visitor.keys);
-          }
-
-          log.finest('_HooksVisitor: expected keys $expectedKeys');
-
-          final missingKeys = <Key>{};
-          final unnecessaryKeys = <Key>{};
-
-          for (final key in expectedKeys) {
-            if (!actualKeys.any(key.accepts)) {
-              missingKeys.add(key.toBaseKey());
-            }
-          }
-
-          log.finest('_HooksVisitor: missing keys $missingKeys');
-
-          // consider the Keys which is not accepted by every expectedKeys as 'unnecessary'
-          for (final key in actualKeys) {
-            if (!expectedKeys.any((expected) => expected.accepts(key))) {
-              unnecessaryKeys.add(key);
-            }
-          }
-
-          log.finest('_HooksVisitor: unnecessary keys $unnecessaryKeys');
-
-          final errNode =
-              arguments.length == 2 ? arguments[1] : node.methodName;
-
-          for (final key in missingKeys) {
-            onMissingKeyReport(
-              key.toString(),
-              key.kind.toReadableString(),
-              node,
-              errNode,
-            );
-          }
-
-          for (final key in unnecessaryKeys) {
-            onUnnecessaryKeyReport(
-              key.toString(),
-              key.kind.toReadableString(),
-              node,
-              errNode,
-            );
-          }
-
-          for (final key in actualKeys) {
-            if (key.kind == KeyKind.localFunction) {
-              onFunctionKeyReport(
-                key.toString(),
-                key.kind.toReadableString(),
-                node,
-                errNode,
-              );
+              log.finest('_HooksVisitor: hooks with positional keys literal');
+              type = _HookType.positionalKeysLiteral;
             }
           }
         }
+    }
+
+    if (type == _HookType.unknown) return;
+
+    log.finest('_HooksVisitor: hooks found');
+
+    final actualKeys = <Key>[];
+    final expectedKeys = <Key>[];
+
+    // find identifiers in the hook's keys
+    switch (type) {
+      case _HookType.positionalKeysLiteral:
+        final keys = arguments[1];
+
+        log.finest(
+            '_HooksVisitor: find identifiers in the positional keys literal');
+
+        final visitor = _KeysIdentifierVisitor(
+          context: context,
+        );
+
+        keys.visitChildren(visitor);
+
+        actualKeys.addAll(visitor.keys);
+
+        log.finest('_HooksVisitor: actual keys $actualKeys');
+        break;
+
+      default:
+    }
+
+    if (context.isNotEmpty) {
+      // find identifiers in the hook body
+      final visitor = _KeysIdentifierVisitor(
+        context: context,
+        onlyBuildVaribles: true,
+      );
+
+      final body = arguments[0];
+      body.visitChildren(visitor);
+
+      expectedKeys.addAll(visitor.keys);
+    }
+
+    log.finest('_HooksVisitor: expected keys $expectedKeys');
+
+    final missingKeys = <Key>{};
+    final unnecessaryKeys = <Key>{};
+
+    for (final key in expectedKeys) {
+      if (!actualKeys.any(key.accepts)) {
+        missingKeys.add(key.toBaseKey());
+      }
+    }
+
+    log.finest('_HooksVisitor: missing keys $missingKeys');
+
+    // consider the Keys which is not accepted by every expectedKeys as 'unnecessary'
+    for (final key in actualKeys) {
+      if (!expectedKeys.any((expected) => expected.accepts(key))) {
+        unnecessaryKeys.add(key);
+      }
+    }
+
+    log.finest('_HooksVisitor: unnecessary keys $unnecessaryKeys');
+
+    for (final key in missingKeys) {
+      final fixes = <LintFix>[];
+      late AstNode errNode;
+
+      switch (type) {
+        case _HookType.omittedPositionalKeys:
+          fixes.add(
+            LintFix.appendFunctionParam(
+              message: 'Add missing "[$key]" parameter',
+              literal: node,
+              param: '[$key]',
+            ),
+          );
+          errNode = node.methodName;
+          break;
+
+        case _HookType.positionalKeysExpression:
+          errNode = arguments[1];
+          break;
+
+        case _HookType.positionalKeysLiteral:
+          final keys = arguments[1] as ListLiteral;
+          fixes.add(LintFix.appendListElement(
+            message: 'Add missing "$key" key',
+            literal: keys,
+            element: key.toString(),
+          ));
+          errNode = keys;
+          break;
+
+        default:
+          throw StateError('unexpected hook type $type');
+      }
+
+      onReport(LintErrorMissingKey(
+        key.toString(),
+        kindStr: key.kind.toReadableString(),
+        ctxNode: node,
+        errNode: errNode,
+        fixes: fixes,
+      ));
+    }
+
+    for (final key in unnecessaryKeys) {
+      late AstNode errNode;
+      final fixes = <LintFix>[];
+
+      switch (type) {
+        case _HookType.positionalKeysLiteral:
+          final keys = arguments[1] as ListLiteral;
+          final index =
+              keys.elements.indexWhere((e) => e.toSource() == key.toString());
+          if (index != -1) {
+            fixes.add(
+              LintFix.removeListElement(
+                message: 'Remove unnecessary "$key" key',
+                literal: keys,
+                element: keys.elements[index],
+              ),
+            );
+          }
+          errNode = keys;
+          break;
+
+        default:
+          throw StateError('unexpected hook type $type');
+      }
+
+      onReport(LintErrorUnnecessaryKey(
+        key.toString(),
+        kindStr: key.kind.toReadableString(),
+        ctxNode: node,
+        errNode: errNode,
+        fixes: fixes,
+      ));
+    }
+
+    for (final key in actualKeys) {
+      if (key.kind == KeyKind.localFunction) {
+        switch (type) {
+          case _HookType.positionalKeysLiteral:
+            final keys = arguments[1] as ListLiteral;
+            onReport(
+              LintErrorFunctionKey(
+                key.toString(),
+                ctxNode: node,
+                errNode: keys,
+              ),
+            );
+            break;
+
+          default:
+            throw StateError('unexpected hook type $type');
+        }
+      }
     }
   }
 }

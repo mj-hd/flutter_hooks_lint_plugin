@@ -21,6 +21,7 @@ class FlutterHooksRulesPlugin extends ServerPlugin {
   FlutterHooksRulesPlugin(ResourceProvider? provider) : super(provider);
 
   var _filesFromSetPriorityFilesRequest = <String>[];
+  Options options = Options();
 
   @override
   List<String> get fileGlobsToAnalyze => const ['**/*.dart'];
@@ -63,7 +64,6 @@ class FlutterHooksRulesPlugin extends ServerPlugin {
     final analysisContext = builder.createContext(contextRoot: locator.first);
     final context = analysisContext as DriverBasedAnalysisContext;
     final dartDriver = context.driver;
-    var options = Options();
 
     try {
       options = _loadOptions(context.contextRoot.optionsFile);
@@ -84,7 +84,6 @@ class FlutterHooksRulesPlugin extends ServerPlugin {
             _processResult(
               dartDriver,
               analysisResult,
-              options,
             );
           } else if (analysisResult is ErrorsResult) {
             channel.sendNotification(plugin.PluginErrorParams(
@@ -115,7 +114,6 @@ class FlutterHooksRulesPlugin extends ServerPlugin {
   void _processResult(
     AnalysisDriver dartDriver,
     ResolvedUnitResult analysisResult,
-    Options options,
   ) {
     final path = analysisResult.path;
 
@@ -130,7 +128,10 @@ class FlutterHooksRulesPlugin extends ServerPlugin {
 
     try {
       final errors = _check(
-          dartDriver, path, analysisResult, options.flutterHooksLintPlugin);
+        dartDriver,
+        path,
+        analysisResult,
+      );
 
       channel.sendNotification(
         plugin.AnalysisErrorsParams(
@@ -149,11 +150,45 @@ class FlutterHooksRulesPlugin extends ServerPlugin {
     }
   }
 
+  @override
+  Future<plugin.EditGetFixesResult> handleEditGetFixes(
+    plugin.EditGetFixesParams parameters,
+  ) async {
+    try {
+      final dartDriver = driverForPath(parameters.file) as AnalysisDriver;
+      // ignore: deprecated_member_use
+      final analysisResult = await dartDriver.getResult2(parameters.file);
+
+      if (analysisResult is! ResolvedUnitResult) {
+        return plugin.EditGetFixesResult([]);
+      }
+
+      final errors = _check(dartDriver, parameters.file, analysisResult)
+          .where(
+            (fix) =>
+                fix.error.location.file == parameters.file &&
+                fix.error.location.offset <= parameters.offset &&
+                parameters.offset <=
+                    fix.error.location.offset + fix.error.location.length &&
+                fix.fixes.isNotEmpty,
+          )
+          .toList();
+
+      return plugin.EditGetFixesResult(errors);
+    } on Exception catch (e, stackTrace) {
+      channel.sendNotification(
+        plugin.PluginErrorParams(false, e.toString(), stackTrace.toString())
+            .toNotification(),
+      );
+
+      return plugin.EditGetFixesResult([]);
+    }
+  }
+
   List<plugin.AnalysisErrorFixes> _check(
     AnalysisDriver driver,
     String filePath,
     ResolvedUnitResult analysisResult,
-    FlutterHooksRulesPluginOptions options,
   ) {
     final errors = <plugin.AnalysisErrorFixes>[];
 
@@ -162,40 +197,25 @@ class FlutterHooksRulesPlugin extends ServerPlugin {
       lineInfo: analysisResult.unit.lineInfo!,
     );
 
-    void report(LintError err, [LintFix? fix]) {
+    void onReport(LintError err) {
       if (supression.isSuppressedLintError(err)) {
         return;
       }
 
       errors.add(
-        plugin.AnalysisErrorFixes(
-          err.toAnalysisError(filePath, analysisResult.unit),
-          fixes: fix != null
-              ? [fix.toAnalysisFix(filePath, analysisResult)]
-              : null,
-        ),
+        err.toAnalysisErrorFixes(filePath, analysisResult),
       );
     }
 
     findExhaustiveKeys(
       analysisResult.unit,
-      options: options.exhaustiveKeys,
-      onMissingKeyReport: (key, kind, ctxNode, errNode) {
-        report(LintError.missingKey(key, kind, ctxNode, errNode));
-      },
-      onUnnecessaryKeyReport: (key, kind, ctxNode, errNode) {
-        report(LintError.unnecessaryKey(key, kind, ctxNode, errNode));
-      },
-      onFunctionKeyReport: (key, _, ctxNode, errNode) {
-        report(LintError.functionKey(key, ctxNode, errNode));
-      },
+      options: options.flutterHooksLintPlugin.exhaustiveKeys,
+      onReport: onReport,
     );
 
     findRulesOfHooks(
       analysisResult.unit,
-      onNestedHooksReport: (hookName, node) {
-        report(LintError.nestedHooks(hookName, node));
-      },
+      onReport: onReport,
     );
 
     return errors;

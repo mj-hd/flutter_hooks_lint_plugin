@@ -1,6 +1,5 @@
 import 'package:analyzer/source/line_info.dart';
 import 'package:flutter_hooks_lint_plugin/src/lint/utils/suppression.dart';
-import 'package:test/scaffolding.dart';
 import 'package:test/test.dart';
 
 void main() {
