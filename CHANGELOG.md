@@ -1,3 +1,7 @@
+## 0.4.0
+
+- support fixes
+
 ## 0.3.1
 
 - loosen dependencies
