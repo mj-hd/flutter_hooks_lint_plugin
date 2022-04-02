@@ -87,7 +87,7 @@ $ flutter pub run flutter_hooks_lint_plugin:flutter_hooks_lint analyze ./
 
 ## TODO
 
-- [ ] support `Fix` (suggestion)
+- [x] support `Fix` (suggestion)
 
 ## Contribution
 
