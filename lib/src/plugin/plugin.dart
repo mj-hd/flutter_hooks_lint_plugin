@@ -194,7 +194,7 @@ class FlutterHooksRulesPlugin extends ServerPlugin {
 
     final supression = Suppression(
       content: analysisResult.content,
-      lineInfo: analysisResult.unit.lineInfo!,
+      lineInfo: analysisResult.unit.lineInfo,
     );
 
     void onReport(LintError err) {

@@ -31,7 +31,7 @@ class HookWidgetVisitor<C> extends SimpleAstVisitor<void> {
   void visitClassDeclaration(ClassDeclaration node) {
     log.finer('HookWidgetVisitor: visit($node)');
 
-    switch (node.extendsClause?.superclass2.name.name) {
+    switch (node.extendsClause?.superclass.name.name) {
       case 'HookWidget':
       case 'HookConsumerWidget':
         final context = contextBuilder();

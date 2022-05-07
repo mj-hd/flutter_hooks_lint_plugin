@@ -135,7 +135,7 @@ class AnalyzeCommand extends Command {
 
     final supression = Suppression(
       content: result.content,
-      lineInfo: result.unit.lineInfo!,
+      lineInfo: result.unit.lineInfo,
     );
 
     void onReport(LintError err) {

@@ -41,7 +41,7 @@ class LintError {
   }
 
   plugin.Location _toLocation(AstNode node, String file, CompilationUnit unit) {
-    final lineInfo = unit.lineInfo!;
+    final lineInfo = unit.lineInfo;
     final begin = node.beginToken.charOffset;
     final end = node.endToken.charEnd;
     final loc = lineInfo.getLocation(begin);
