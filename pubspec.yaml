@@ -20,7 +20,7 @@ dev_dependencies:
   flutter:
     sdk: flutter
   lints: 1.0.1
-  test: 1.20.1
+  test: ^1.20.1
   tuple: 2.0.0
   flutter_hooks: 0.18.2
   benchmark_harness: 2.0.0
