@@ -70,9 +70,8 @@ class LintErrorMissingKey extends LintError {
     required this.kindStr,
     required List<LintFix> fixes,
   }) : super(
-          message: "Missing key '$key' " +
-              (kindStr != null ? '($kindStr) ' : '') +
-              'found. Add the key, or ignore this line.',
+          message:
+              "Missing key '$key' ${(kindStr != null ? '($kindStr) ' : '')}found. Add the key, or ignore this line.",
           code: _exhaustiveKeysCode,
           key: key,
           ctxNode: ctxNode,
@@ -91,9 +90,8 @@ class LintErrorUnnecessaryKey extends LintError {
     required this.kindStr,
     required List<LintFix> fixes,
   }) : super(
-          message: "Unnecessary key '$key' " +
-              (kindStr != null ? '($kindStr) ' : '') +
-              'found. Remove the key, or ignore this line.',
+          message:
+              "Unnecessary key '$key' ${(kindStr != null ? '($kindStr) ' : '')}found. Remove the key, or ignore this line.",
           code: _exhaustiveKeysCode,
           key: key,
           ctxNode: ctxNode,
@@ -157,7 +155,7 @@ class Key {
         _kind = kind,
         assert(idents.isNotEmpty);
 
-  factory Key.withContext(
+  factory Key._withContext(
     _Context context,
     List<SimpleIdentifier> idents,
   ) =>
@@ -737,7 +735,7 @@ class _KeysIdentifierVisitor extends RecursiveAstVisitor<void> {
 
     final idents = [node.prefix, node.identifier];
 
-    _visitKey(Key.withContext(context, idents));
+    _visitKey(Key._withContext(context, idents));
   }
 
   @override
@@ -750,14 +748,14 @@ class _KeysIdentifierVisitor extends RecursiveAstVisitor<void> {
 
     final idents = visitor.idents;
 
-    _visitKey(Key.withContext(context, idents));
+    _visitKey(Key._withContext(context, idents));
   }
 
   @override
   void visitSimpleIdentifier(SimpleIdentifier node) {
     log.finer('_KeysIdentifierVisitor: visitSimpleIdentifier($node)');
 
-    _visitKey(Key.withContext(context, [node]));
+    _visitKey(Key._withContext(context, [node]));
 
     return super.visitSimpleIdentifier(node);
   }
