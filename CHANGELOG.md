@@ -1,3 +1,7 @@
+## 0.5.0
+
+- bump dependencies
+
 ## 0.4.0
 
 - support fixes
