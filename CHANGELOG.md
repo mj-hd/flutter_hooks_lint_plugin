@@ -1,3 +1,7 @@
+## 0.5.1
+
+- remove support of analyzer 2.x.x
+
 ## 0.5.0
 
 - bump dependencies
