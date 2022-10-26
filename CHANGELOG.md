@@ -1,3 +1,9 @@
+## 0.6.0
+
+- bump analyzer to 5.x.x
+- bump dart SDK to 2.18.x
+- fix handling of context's analyzer options
+
 ## 0.5.2
 
 - bump dependencies
