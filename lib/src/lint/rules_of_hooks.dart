@@ -73,7 +73,7 @@ class _HooksInvocationVisitor extends RecursiveAstVisitor<void> {
     log.finest('_HooksInvocationVisitor: _findControlFlow($node)');
 
     if (node == null) return false;
-    if (node is MethodDeclaration && node.name.name == 'build') {
+    if (node is MethodDeclaration && node.name.lexeme == 'build') {
       return false;
     }
 

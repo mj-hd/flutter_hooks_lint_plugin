@@ -57,7 +57,7 @@ class _BuildVisitor<C> extends SimpleAstVisitor<void> {
 
   @override
   void visitMethodDeclaration(MethodDeclaration node) {
-    if (node.name.name != 'build') return;
+    if (node.name.lexeme != 'build') return;
 
     log.finer('_BuildVisitor: visit($node)');
 
@@ -81,8 +81,8 @@ class CustomHookFunctionVisitor<C> extends SimpleAstVisitor<void> {
 
   @override
   void visitFunctionDeclaration(FunctionDeclaration node) {
-    if (!node.name.name.startsWith('use') &&
-        !node.name.name.startsWith('_use')) {
+    if (!node.name.lexeme.startsWith('use') &&
+        !node.name.lexeme.startsWith('_use')) {
       return;
     }
 

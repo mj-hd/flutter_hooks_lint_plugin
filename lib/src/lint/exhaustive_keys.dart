@@ -397,7 +397,7 @@ class _LocalVariableVisitor extends SimpleAstVisitor<void> {
       return;
     }
 
-    final elem = decl.name.staticElement;
+    final elem = decl.declaredElement;
 
     if (elem is! LocalVariableElement) {
       log.finest(
