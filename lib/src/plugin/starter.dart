@@ -6,6 +6,8 @@ import 'package:flutter_hooks_lint_plugin/src/plugin/plugin.dart';
 
 void start(Iterable<String> _, SendPort sendPort) {
   ServerPluginStarter(
-    FlutterHooksRulesPlugin(PhysicalResourceProvider.INSTANCE),
+    FlutterHooksRulesPlugin(
+      resourceProvider: PhysicalResourceProvider.INSTANCE,
+    ),
   ).start(sendPort);
 }
