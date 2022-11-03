@@ -1,3 +1,7 @@
+## 0.6.1
+
+- bump analyzer to 5.2.0
+
 ## 0.6.0
 
 - bump analyzer to 5.x.x
