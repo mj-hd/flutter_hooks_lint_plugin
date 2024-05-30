@@ -1,3 +1,8 @@
+## 0.6.2
+
+- bump analyzer to 6.4.1
+- bump sdk to 3.3.0
+
 ## 0.6.1
 
 - bump analyzer to 5.2.0
