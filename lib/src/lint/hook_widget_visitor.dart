@@ -1,6 +1,5 @@
 import 'package:analyzer/dart/ast/ast.dart';
 import 'package:analyzer/dart/ast/visitor.dart';
-import 'package:analyzer/dart/element/element.dart';
 import 'package:logging/logging.dart';
 
 final log = Logger('hook_widget_visitor');
@@ -15,69 +14,31 @@ extension AstNodeFindChild on AstNode {
   }
 }
 
-class HookWidgetVisitor<C> extends SimpleAstVisitor<void> {
-  HookWidgetVisitor({
-    required this.contextBuilder,
+class HookBlockVisitor extends SimpleAstVisitor<void> {
+  HookBlockVisitor({
     this.onClassDeclaration,
+    this.onFormalParametersList,
     this.onBuildBlock,
   });
 
-  final C Function() contextBuilder;
-  final void Function(C context, ClassDeclaration node)? onClassDeclaration;
-  final void Function(C context, Block node, ExecutableElement? elem)?
-      onBuildBlock;
+  final void Function(ClassDeclaration node)? onClassDeclaration;
+  final void Function(FormalParameterList node)? onFormalParametersList;
+  final void Function(Block node)? onBuildBlock;
 
   @override
   void visitClassDeclaration(ClassDeclaration node) {
     log.finer('HookWidgetVisitor: visit($node)');
 
-    switch (node.extendsClause?.superclass.name.name) {
+    switch (node.extendsClause?.superclass.name.lexeme) {
       case 'HookWidget':
       case 'HookConsumerWidget':
-        final context = contextBuilder();
-
-        onClassDeclaration?.call(context, node);
+        onClassDeclaration?.call(node);
 
         if (onBuildBlock != null) {
-          node.visitChildren(_BuildVisitor(context, onBuildBlock!));
+          node.visitChildren(_BuildVisitor(onBuildBlock!));
         }
     }
   }
-}
-
-class _BuildVisitor<C> extends SimpleAstVisitor<void> {
-  _BuildVisitor(
-    this.context,
-    this.visitHandler,
-  );
-
-  final C context;
-  final void Function(C context, Block node, ExecutableElement? elem)
-      visitHandler;
-
-  @override
-  void visitMethodDeclaration(MethodDeclaration node) {
-    if (node.name.lexeme != 'build') return;
-
-    log.finer('_BuildVisitor: visit($node)');
-
-    final block = node.findChild<BlockFunctionBody>()?.findChild<Block>();
-
-    if (block == null) return;
-
-    visitHandler(context, block, node.declaredElement);
-  }
-}
-
-class CustomHookFunctionVisitor<C> extends SimpleAstVisitor<void> {
-  CustomHookFunctionVisitor({
-    required this.contextBuilder,
-    required this.onBuildBlock,
-  });
-
-  final C Function() contextBuilder;
-  final void Function(C context, Block node, FormalParameterList? params)
-      onBuildBlock;
 
   @override
   void visitFunctionDeclaration(FunctionDeclaration node) {
@@ -93,6 +54,28 @@ class CustomHookFunctionVisitor<C> extends SimpleAstVisitor<void> {
 
     if (block == null) return;
 
-    onBuildBlock(contextBuilder(), block, expr.parameters);
+    if (expr.parameters != null) {
+      onFormalParametersList?.call(expr.parameters!);
+    }
+    onBuildBlock?.call(block);
+  }
+}
+
+class _BuildVisitor extends SimpleAstVisitor<void> {
+  _BuildVisitor(this.visitHandler);
+
+  final void Function(Block node) visitHandler;
+
+  @override
+  void visitMethodDeclaration(MethodDeclaration node) {
+    if (node.name.lexeme != 'build') return;
+
+    log.finer('_BuildVisitor: visit($node)');
+
+    final block = node.findChild<BlockFunctionBody>()?.findChild<Block>();
+
+    if (block == null) return;
+
+    visitHandler(block);
   }
 }

@@ -1,36 +1,53 @@
-import 'package:flutter_hooks_lint_plugin/src/lint/config.dart';
+// ignore_for_file: non_constant_identifier_names
+
+import 'package:analyzer/error/error.dart';
+import 'package:analyzer/src/error/codes.dart';
+import 'package:analyzer_testing/analysis_rule/analysis_rule.dart';
+import 'package:flutter_hooks_lint_plugin/main.dart';
 import 'package:flutter_hooks_lint_plugin/src/lint/exhaustive_keys.dart';
-import 'package:flutter_hooks_lint_plugin/src/lint/utils/lint_error.dart';
-import 'package:test/test.dart';
+import 'package:test_reflective_loader/test_reflective_loader.dart';
 
-import 'matcher.dart';
 import 'utils.dart';
-
-Future<List<LintError>> _findErrors(
-  String source, [
-  ExhaustiveKeysOptions? options,
-]) async {
-  final unit = await compileCode(source);
-
-  final result = <LintError>[];
-
-  findExhaustiveKeys(
-    unit,
-    options: options ?? ExhaustiveKeysOptions(),
-    onReport: (err) {
-      result.add(err);
-    },
-  );
-
-  return result;
-}
 
 void main() {
   setUpLogging();
+  defineReflectiveSuite(() {
+    defineReflectiveTests(ExhaustiveKeysRuleTest);
+  });
+}
 
-  group('missing keys', () {
-    test('report class property reference', () async {
-      final source = '''
+@reflectiveTest
+class ExhaustiveKeysRuleTest extends AnalysisRuleTest {
+  @override
+  final bool addFlutterPackageDep = false; // See: https://github.com/dart-lang/sdk/issues/61597
+
+  @override
+  List<DiagnosticCode> get ignoredDiagnosticCodes => [
+    CompileTimeErrorCode.undefinedMethod,
+    CompileTimeErrorCode.undefinedNamedParameter,
+    CompileTimeErrorCode.undefinedClass,
+    CompileTimeErrorCode.undefinedFunction,
+    CompileTimeErrorCode.argumentTypeNotAssignable,
+    CompileTimeErrorCode.extendsNonClass,
+    WarningCode.bodyMightCompleteNormallyNullable,
+    WarningCode.overrideOnNonOverridingMethod,
+    ...super.ignoredDiagnosticCodes,
+  ];
+
+  @override
+  void setUp() {
+    final pluginContext = FlutterHooksLintPluginContext();
+    rule = ExhaustiveKeysRule(pluginContext);
+    super.setUp();
+
+    setupFlutterHooksStub();
+  }
+
+  void test_missing_keys_report_class_property_reference() async {
+    await assertDiagnostics(
+      '''
+        import 'package:flutter_hooks/flutter_hooks.dart';
+
         class TestWidget extends HookWidget {
           const TestWidget({
             Key? key,
@@ -48,15 +65,16 @@ void main() {
             return Text('TestWidget');
           }
         }
-      ''';
+      ''',
+      [lint(384, 2, name: ExhaustiveKeysRule.codeForMissingKey.name)],
+    );
+  }
 
-      final errors = await _findErrors(source);
+  void test_missing_key_report_local_variabll_reference() async {
+    await assertDiagnostics(
+      '''
+        import 'package:flutter_hooks/flutter_hooks.dart';
 
-      expect(errors, [LintErrorMissingKeyMatcher('dep', 'class field')]);
-    });
-
-    test('report local variable reference', () async {
-      final source = '''
         import 'dart:math';
 
         class TestWidget extends HookWidget {
@@ -75,16 +93,15 @@ void main() {
             return Text('TestWidget');
           }
         }
-      ''';
+      ''',
+      [lint(388, 2, name: ExhaustiveKeysRule.codeForMissingKey.name)],
+    );
+  }
 
-      final errors = await _findErrors(source);
-
-      expect(errors, [LintErrorMissingKeyMatcher('dep', 'local variable')]);
-    });
-
-    test('report local function reference', () async {
-      final source = '''
-        import 'dart:math';
+  void test_missing_key_report_local_function_reference() async {
+    await assertDiagnostics(
+      '''
+        import 'package:flutter_hooks/flutter_hooks.dart';
 
         class TestWidget extends HookWidget {
           const TestWidget({
@@ -104,15 +121,15 @@ void main() {
             return Text('TestWidget');
           }
         }
-      ''';
+      ''',
+      [lint(389, 2, name: ExhaustiveKeysRule.codeForMissingKey.name)],
+    );
+  }
 
-      final errors = await _findErrors(source);
+  void test_missing_key_ignore_useEffect_without_keys() async {
+    await assertNoDiagnostics('''
+        import 'package:flutter_hooks/flutter_hooks.dart';
 
-      expect(errors, [LintErrorMissingKeyMatcher('dep', 'local function')]);
-    });
-
-    test('ignore useEffect without keys', () async {
-      final source = '''
         class TestWidget extends HookWidget {
           const TestWidget({
             Key? key,
@@ -130,15 +147,14 @@ void main() {
             return Text('TestWidget');
           }
         }
-      ''';
+      ''');
+  }
 
-      final errors = await _findErrors(source);
+  void test_missing_key_report_hooks_with_keys() async {
+    await assertDiagnostics(
+      '''
+        import 'package:flutter_hooks/flutter_hooks.dart';
 
-      expect(errors, []);
-    });
-
-    test('report hooks with keys', () async {
-      final source = '''
         class TestWidget extends HookWidget {
           const TestWidget({
             Key? key,
@@ -166,25 +182,25 @@ void main() {
             return Text('TestWidget');
           }
         }
-      ''';
+      ''',
+      [
+        lint(961, 2, name: ExhaustiveKeysRule.codeForMissingKey.name),
+        lint(961, 2, name: ExhaustiveKeysRule.codeForMissingKey.name),
+        lint(961, 2, name: ExhaustiveKeysRule.codeForMissingKey.name),
+        lint(961, 2, name: ExhaustiveKeysRule.codeForMissingKey.name),
+        lint(961, 2, name: ExhaustiveKeysRule.codeForMissingKey.name),
+        lint(961, 2, name: ExhaustiveKeysRule.codeForMissingKey.name),
+        lint(961, 2, name: ExhaustiveKeysRule.codeForMissingKey.name),
+        lint(961, 2, name: ExhaustiveKeysRule.codeForMissingKey.name),
+        lint(961, 2, name: ExhaustiveKeysRule.codeForMissingKey.name),
+      ],
+    );
+  }
 
-      final errors = await _findErrors(source);
+  void test_missing_key_ignore_hooks_with_empty_keys() async {
+    await assertNoDiagnostics('''
+        import 'package:flutter_hooks/flutter_hooks.dart';
 
-      expect(errors, [
-        LintErrorMissingKeyMatcher('val1', 'local variable'),
-        LintErrorMissingKeyMatcher('val2', 'local variable'),
-        LintErrorMissingKeyMatcher('val3', 'local variable'),
-        LintErrorMissingKeyMatcher('val4', 'local variable'),
-        LintErrorMissingKeyMatcher('val5', 'local variable'),
-        LintErrorMissingKeyMatcher('val6', 'local variable'),
-        LintErrorMissingKeyMatcher('val7', 'local variable'),
-        LintErrorMissingKeyMatcher('val8', 'local variable'),
-        LintErrorMissingKeyMatcher('val9', 'local variable'),
-      ]);
-    });
-
-    test('ignore hooks with empty keys', () async {
-      final source = '''
         class TestWidget extends HookWidget {
           const TestWidget({
             Key? key,
@@ -209,19 +225,20 @@ void main() {
             return Text('TestWidget');
           }
         }
-      ''';
+      ''');
+  }
 
-      final errors = await _findErrors(source);
+  void test_missing_key_ignore_hooks_without_keys() async {
+    await assertNoDiagnostics('''
+        import 'package:flutter_hooks/flutter_hooks.dart';
 
-      expect(errors, []);
-    });
-
-    test('ignore hooks without keys', () async {
-      final source = '''
         class TestWidget extends HookWidget {
           const TestWidget({
             Key? key,
+            required this.dep,
           }): super(key: key);
+
+          final bool dep;
 
           @override
           Widget build(BuildContext context) {
@@ -232,25 +249,23 @@ void main() {
             final val5 = useStreamController();
             final val6 = useTabController();
             final val7 = useTransformationController();
-            final val8 = useMemoized(() => dep);
-            final val9 = useValueNotifier(0);
+            final val8 = useValueNotifier(0);
 
             useEffect(() {
-              print('\$val1\$val2\$val3\$val4\$val5\$val6\$val7\$val8\$val9');
+              print('\$val1\$val2\$val3\$val4\$val5\$val6\$val7\$val8');
             }, []);
 
             return Text('TestWidget');
           }
         }
-      ''';
+      ''');
+  }
 
-      final errors = await _findErrors(source);
+  void test_missing_key_report_useCallback() async {
+    await assertDiagnostics(
+      '''
+        import 'package:flutter_hooks/flutter_hooks.dart';
 
-      expect(errors, []);
-    });
-
-    test('report useCallback', () async {
-      final source = '''
         class TestWidget extends HookWidget {
           const TestWidget({
             Key? key,
@@ -268,15 +283,16 @@ void main() {
             return Text('TestWidget');
           }
         }
-      ''';
+      ''',
+      [lint(399, 2, name: ExhaustiveKeysRule.codeForMissingKey.name)],
+    );
+  }
 
-      final errors = await _findErrors(source);
+  void test_missing_key_report_hooks_in_a_custom_hook() async {
+    await assertDiagnostics(
+      '''
+        import 'package:flutter_hooks/flutter_hooks.dart';
 
-      expect(errors, [LintErrorMissingKeyMatcher('dep', 'class field')]);
-    });
-
-    test('report hooks in a custom hook', () async {
-      final source = '''
         class TestWidget extends HookWidget {
           const TestWidget({
             Key? key,
@@ -294,18 +310,19 @@ void main() {
           final length = value.length;
           return useMemoized(() => 'value: ' + value + ' length: ' + length, []);
         }
-      ''';
+      ''',
+      [
+        lint(509, 2, name: ExhaustiveKeysRule.codeForMissingKey.name),
+        lint(509, 2, name: ExhaustiveKeysRule.codeForMissingKey.name),
+      ],
+    );
+  }
 
-      final errors = await _findErrors(source);
+  void test_missing_key_report_complex_dotted_value() async {
+    await assertDiagnostics(
+      '''
+        import 'package:flutter_hooks/flutter_hooks.dart';
 
-      expect(errors, [
-        LintErrorMissingKeyMatcher('value', 'function parameter'),
-        LintErrorMissingKeyMatcher('length', 'local variable'),
-      ]);
-    });
-
-    test('report complex dotted value', () async {
-      final source = '''
         class TestWidget extends HookWidget {
           const TestWidget({
             Key? key,
@@ -330,15 +347,16 @@ void main() {
             return Text('Hello');
           }
         }
-      ''';
+      ''',
+      [lint(644, 2, name: ExhaustiveKeysRule.codeForMissingKey.name)],
+    );
+  }
 
-      final errors = await _findErrors(source);
+  void test_missing_key_report_optional_dotted_value() async {
+    await assertDiagnostics(
+      '''
+        import 'package:flutter_hooks/flutter_hooks.dart';
 
-      expect(errors, [LintErrorMissingKeyMatcher('controller', 'class field')]);
-    });
-
-    test('report optional dotted value', () async {
-      final source = '''
         class TestWidget extends HookWidget {
           const TestWidget({
             Key? key,
@@ -356,19 +374,19 @@ void main() {
             return Text('Hello');
           }
         }
-      ''';
+      ''',
+      [lint(394, 2, name: ExhaustiveKeysRule.codeForMissingKey.name)],
+    );
+  }
 
-      final errors = await _findErrors(source);
+  void test_missing_key_ignore_value_notifier() async {
+    await assertNoDiagnostics('''
+        import 'package:flutter_hooks/flutter_hooks.dart';
 
-      expect(errors, [LintErrorMissingKeyMatcher('list', 'class field')]);
-    });
-
-    test('ignore value notifier', () async {
-      final source = '''
         class TestWidget extends HookWidget {
           const TestWidget({
             Key? key,
-            this.flag,
+            required this.flag,
           }) : super(key: key);
 
           final ValueNotifier<bool> flag;
@@ -382,15 +400,13 @@ void main() {
             return Text('Hello');
           }
         }
-      ''';
+      ''');
+  }
 
-      final errors = await _findErrors(source);
+  void test_missing_key_ignore_useState_value_reference() async {
+    await assertNoDiagnostics('''
+        import 'package:flutter_hooks/flutter_hooks.dart';
 
-      expect(errors, []);
-    });
-
-    test('ignore useState value reference', () async {
-      final source = '''
         class TestWidget extends HookWidget {
           @override
           Widget build(BuildContext context) {
@@ -405,15 +421,13 @@ void main() {
             );
           }
         }
-      ''';
+      ''');
+  }
 
-      final errors = await _findErrors(source);
+  void test_missing_key_ignore_default_constantHooks_value_reference() async {
+    await assertNoDiagnostics('''
+        import 'package:flutter_hooks/flutter_hooks.dart';
 
-      expect(errors, []);
-    });
-
-    test('ignore default constantHooks value reference', () async {
-      final source = '''
         class TestWidget extends HookWidget {
           @override
           Widget build(BuildContext _) {
@@ -434,15 +448,15 @@ void main() {
             return Text('Hello');
           }
         }
-      ''';
+      ''');
+  }
 
-      final errors = await _findErrors(source);
+  void
+  test_missing_key_ignore_option_specified_constantHooks_value_reference() async {
+    await assertDiagnostics(
+      '''
+        import 'package:flutter_hooks/flutter_hooks.dart';
 
-      expect(errors, []);
-    });
-
-    test('ignore option specified constantHooks value reference', () async {
-      final source = '''
         class TestWidget extends HookWidget {
           @override
           Widget build(BuildContext _) {
@@ -455,22 +469,15 @@ void main() {
             return Text('Hello');
           }
         }
-      ''';
+      ''',
+      [lint(298, 2, name: ExhaustiveKeysRule.codeForMissingKey.name)],
+    );
+  }
 
-      final errors = await _findErrors(
-        source,
-        ExhaustiveKeysOptions(
-          constantHooks: [
-            'useCustomHook',
-          ],
-        ),
-      );
+  void test_missing_key_ignore_local_const_reference() async {
+    await assertNoDiagnostics('''
+        import 'package:flutter_hooks/flutter_hooks.dart';
 
-      expect(errors, []);
-    });
-
-    test('ignore local const reference', () async {
-      final source = '''
         class TestWidget extends HookWidget {
           @override
           Widget build(BuildContext context) {
@@ -483,15 +490,13 @@ void main() {
             return Text('Hello');
           }
         }
-      ''';
+      ''');
+  }
 
-      final errors = await _findErrors(source);
+  void test_missing_key_ignore_top_level_const_reference() async {
+    await assertNoDiagnostics('''
+        import 'package:flutter_hooks/flutter_hooks.dart';
 
-      expect(errors, []);
-    });
-
-    test('ignore top-level const reference', () async {
-      final source = '''
         const value = 'CONSTANT';
 
         class TestWidget extends HookWidget {
@@ -504,15 +509,13 @@ void main() {
             return Text('Hello');
           }
         }
-      ''';
+      ''');
+  }
 
-      final errors = await _findErrors(source);
+  void test_missing_key_ignore_library_reference() async {
+    await assertNoDiagnostics('''
+        import 'package:flutter_hooks/flutter_hooks.dart';
 
-      expect(errors, []);
-    });
-
-    test('ignore library reference', () async {
-      final source = '''
         import 'dart:math';
 
         class TestWidget extends HookWidget {
@@ -525,15 +528,14 @@ void main() {
             return Text('Hello');
           }
         }
-      ''';
+      ''');
+  }
 
-      final errors = await _findErrors(source);
+  void test_missing_key_suggest_to_add_keys_param_with_leading_comma() async {
+    await assertDiagnostics(
+      '''
+        import 'package:flutter_hooks/flutter_hooks.dart';
 
-      expect(errors, []);
-    });
-
-    test('suggest to add keys param with leading comma', () async {
-      final source = '''
         class TestWidget extends HookWidget {
           const TestWidget({
             Key? key,
@@ -551,17 +553,16 @@ void main() {
             return Text(test);
           }
         }
-      ''';
+      ''',
+      [lint(341, 11, name: ExhaustiveKeysRule.codeForMissingKey.name)],
+    );
+  }
 
-      final errors = await _findErrors(source);
+  void test_missing_key_suggest_to_add_keys_param_with_trailing_comma() async {
+    await assertDiagnostics(
+      '''
+        import 'package:flutter_hooks/flutter_hooks.dart';
 
-      expect(errors, [
-        LintErrorMatcher.fixes([', [dep]']),
-      ]);
-    });
-
-    test('suggest to add keys param with trailing comma', () async {
-      final source = '''
         class TestWidget extends HookWidget {
           const TestWidget({
             Key? key,
@@ -581,21 +582,21 @@ void main() {
             return Text(test);
           }
         }
-      ''';
+      ''',
+      [lint(341, 11, name: ExhaustiveKeysRule.codeForMissingKey.name)],
+    );
+  }
 
-      final errors = await _findErrors(source);
+  void test_missing_key_suggest_to_append_key_with_leading_comma() async {
+    await assertDiagnostics(
+      '''
+        import 'package:flutter_hooks/flutter_hooks.dart';
 
-      expect(errors, [
-        LintErrorMatcher.fixes([' [dep],']),
-      ]);
-    });
-
-    test('suggest to append key with leading comma', () async {
-      final source = '''
         class TestWidget extends HookWidget {
           const TestWidget({
             Key? key,
-            required this.dep,
+            required this.dep1,
+            required this.dep2,
           }): super(key: key);
 
           final String dep1;
@@ -610,21 +611,21 @@ void main() {
             return Text('TestWidget');
           }
         }
-      ''';
+      ''',
+      [lint(455, 6, name: ExhaustiveKeysRule.codeForMissingKey.name)],
+    );
+  }
 
-      final errors = await _findErrors(source);
+  void test_missing_key_suggest_to_append_key_with_trailing_comma() async {
+    await assertDiagnostics(
+      '''
+        import 'package:flutter_hooks/flutter_hooks.dart';
 
-      expect(errors, [
-        LintErrorMatcher.fixes([', dep2']),
-      ]);
-    });
-
-    test('suggest to append key with trailing comma', () async {
-      final source = '''
         class TestWidget extends HookWidget {
           const TestWidget({
             Key? key,
-            required this.dep,
+            required this.dep1,
+            required this.dep2,
           }): super(key: key);
 
           final String dep1;
@@ -641,19 +642,16 @@ void main() {
             return Text('TestWidget');
           }
         }
-      ''';
+      ''',
+      [lint(455, 35, name: ExhaustiveKeysRule.codeForMissingKey.name)],
+    );
+  }
 
-      final errors = await _findErrors(source);
+  void test_unnecessary_report_unused_variable_reference() async {
+    await assertDiagnostics(
+      '''
+        import 'package:flutter_hooks/flutter_hooks.dart';
 
-      expect(errors, [
-        LintErrorMatcher.fixes([' dep2,']),
-      ]);
-    });
-  });
-
-  group('unnecessary keys', () {
-    test('report unused variable reference', () async {
-      final source = '''
         import 'dart:math';
         class TestWidget extends HookWidget {
           const TestWidget({
@@ -668,15 +666,16 @@ void main() {
             return Text('TestWidget');
           }
         }
-      ''';
+      ''',
+      [lint(389, 5, name: ExhaustiveKeysRule.codeForUnnecessaryKey.name)],
+    );
+  }
 
-      final errors = await _findErrors(source);
+  void test_unnecessary_report_useState_notifier_reference() async {
+    await assertDiagnostics(
+      '''
+        import 'package:flutter_hooks/flutter_hooks.dart';
 
-      expect(errors, [LintErrorUnnecessaryKeyMatcher('dep', 'local variable')]);
-    });
-
-    test('report useState notifier reference', () async {
-      final source = '''
         class TestWidget extends HookWidget {
           @override
           Widget build(BuildContext context) {
@@ -689,16 +688,15 @@ void main() {
             );
           }
         }
-      ''';
+      ''',
+      [lint(283, 7, name: ExhaustiveKeysRule.codeForUnnecessaryKey.name)],
+    );
+  }
 
-      final errors = await _findErrors(source);
+  void test_unnecessary_ignore_useState_value_reference() async {
+    await assertDiagnostics('''
+        import 'package:flutter_hooks/flutter_hooks.dart';
 
-      expect(
-          errors, [LintErrorUnnecessaryKeyMatcher('state', 'state variable')]);
-    });
-
-    test('ignore useState value reference', () async {
-      final source = '''
         class TestWidget extends HookWidget {
           @override
           Widget build(BuildContext context) {
@@ -713,43 +711,39 @@ void main() {
             );
           }
         }
-      ''';
+      ''', []);
+  }
 
-      final errors = await _findErrors(source);
+  void test_unnecessary_ignore_dotted_value() async {
+    await assertDiagnostics('''
+        import 'package:flutter_hooks/flutter_hooks.dart';
 
-      expect(errors, []);
-    });
-
-    test('ignore dotted value', () async {
-      final source = '''
         const _limit = 5;
 
         class TestWidget extends HookWidget {
           const TestWidget({
             Key? key,
-            this.list,
+            required this.list,
           }) : super(key: key);
 
           final List<String> list;
 
           @override
           Widget build(BuildContext context) {
-            final state = useState(0);
+            final state = useState(false);
             useEffect(() {
               state.value = list.length <= _limit;
             }, [list.length]);
             return Text('Hello');
           }
         }
-      ''';
+      ''', []);
+  }
 
-      final errors = await _findErrors(source);
+  void test_unnecessary_ignore_complex_dotted_value() async {
+    await assertDiagnostics('''
+        import 'package:flutter_hooks/flutter_hooks.dart';
 
-      expect(errors, []);
-    });
-
-    test('ignore complex dotted value', () async {
-      final source = '''
         class TestWidget extends HookWidget {
           const TestWidget({
             Key? key,
@@ -774,16 +768,14 @@ void main() {
             return Text('Hello');
           }
         }
-      ''';
+      ''', []);
+  }
 
-      final errors = await _findErrors(source);
+  void
+  test_unnecessary_ignore_optional_dotted_value_exists_in_keys_full_expression() async {
+    await assertDiagnostics('''
+        import 'package:flutter_hooks/flutter_hooks.dart';
 
-      expect(errors, []);
-    });
-
-    test('ignore optional dotted value exists in keys full expression',
-        () async {
-      final source = '''
         class TestWidget extends HookWidget {
           const TestWidget({
             Key? key,
@@ -801,16 +793,14 @@ void main() {
             return Text('Hello');
           }
         }
-      ''';
+      ''', []);
+  }
 
-      final errors = await _findErrors(source);
+  void
+  test_unnecessary_ignore_optional_dotted_value_exists_in_keys_short_expression() async {
+    await assertDiagnostics('''
+        import 'package:flutter_hooks/flutter_hooks.dart';
 
-      expect(errors, []);
-    });
-
-    test('ignore optional dotted value exists in keys short expression',
-        () async {
-      final source = '''
         class TestWidget extends HookWidget {
           const TestWidget({
             Key? key,
@@ -828,17 +818,14 @@ void main() {
             return Text('Hello');
           }
         }
-      ''';
+      ''', []);
+  }
 
-      final errors = await _findErrors(source);
+  void test_function_report() async {
+    await assertDiagnostics(
+      '''
+        import 'package:flutter_hooks/flutter_hooks.dart';
 
-      expect(errors, []);
-    });
-  });
-
-  group('function keys', () {
-    test('report', () async {
-      final source = '''
         class TestWidget extends HookWidget {
           const TestWidget({
             Key? key,
@@ -857,11 +844,8 @@ void main() {
             return Text('Hello');
           }
         }
-      ''';
-
-      final errors = await _findErrors(source);
-
-      expect(errors, [LintErrorFunctionKeyMatcher('listener')]);
-    });
-  });
+      ''',
+      [lint(400, 10, name: ExhaustiveKeysRule.codeForFunctionKey.name)],
+    );
+  }
 }

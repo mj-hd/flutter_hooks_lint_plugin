@@ -41,9 +41,11 @@ dev_dependencies:
 Add `flutter_hooks_lint_plugin` plugin directive to your `analyzer_options.yaml`:
 
 ```yaml
-analyzer:
-  plugins:
-    - flutter_hooks_lint_plugin
+plugins:
+  flutter_hooks_lint_plugin:
+    diagnostics:
+      exhaustive_keys: true
+      nested_hooks: true
 ```
 
 Then, run `flutter pub get` and restart your IDE/Editor.
@@ -71,35 +73,13 @@ flutter_hooks_lint_plugin:
 
 There are several ways to suppress lints:
 
-1. add `// ignore_for_file: exhaustive_keys, nested_hooks` to suppress lints in the entire file
-1. add `// ignore: exhaustive_keys, nested_hooks` to suppress lints at the next or current line
+1. add `// ignore_for_file: exhaustive_keys.missing_key, rules_of_hooks.nested_hooks` to suppress lints in the entire file
+1. add `// ignore: exhaustive_keys.missing_key, rules_of_hooks.nested_hooks` to suppress lints at the next or current line
 1. add `// ignore_keys: foo, bar` to suppress lints for the specific keys at the next or current line
-
-## CLI
-
-You can also use this plugin by CLI command:
-
-```sh
-$ dart pub run flutter_hooks_lint_plugin:flutter_hooks_lint analyze ./
-
-$ flutter pub run flutter_hooks_lint_plugin:flutter_hooks_lint analyze ./
-```
-
-## TODO
-
-- [x] support `Fix` (suggestion)
 
 ## Contribution
 
 Welcome PRs!
-
-You can develop locally by modifying plugin's dependency to absolute path in `tools/analyzer_plugin/pubspec.yaml`:
-
-```dart
-dependencies:
-  flutter_hooks_lint_plugin:
-    path: /home/mjhd/flutter_hooks_lint_plugin # <= absolute path to the cloned directory
-```
 
 ## LICENSE
 

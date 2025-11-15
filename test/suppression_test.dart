@@ -1,5 +1,4 @@
-import 'package:analyzer/source/line_info.dart';
-import 'package:flutter_hooks_lint_plugin/src/lint/utils/suppression.dart';
+import 'package:flutter_hooks_lint_plugin/src/lint/supression.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -9,10 +8,7 @@ void main() {
         line1 // ignore_for_file: lint_id1, lint_id2
       ''';
 
-      final suppression = Suppression(
-        content: source,
-        lineInfo: LineInfo.fromContent(source),
-      );
+      final suppression = Suppression(source);
 
       expect(suppression.isSuppressed('lint_id1', 1), true);
       expect(suppression.isSuppressed('lint_id2', 1), true);
@@ -24,10 +20,7 @@ void main() {
         line1 // ignore: lint_id1, lint_id2
       ''';
 
-      final suppression = Suppression(
-        content: source,
-        lineInfo: LineInfo.fromContent(source),
-      );
+      final suppression = Suppression(source);
 
       expect(suppression.isSuppressed('lint_id1', 1), true);
       expect(suppression.isSuppressed('lint_id2', 1), true);
@@ -49,10 +42,7 @@ void main() {
         line1 // ignore_keys: key1, key2
       ''';
 
-      final suppression = Suppression(
-        content: source,
-        lineInfo: LineInfo.fromContent(source),
-      );
+      final suppression = Suppression(source);
 
       expect(suppression.isSuppressed('lint_id', 1, 'key1'), true);
       expect(suppression.isSuppressed('lint_id', 1, 'key2'), true);

@@ -1,11 +1,9 @@
 import 'package:analyzer/source/line_info.dart';
-import 'package:flutter_hooks_lint_plugin/src/lint/utils/lint_error.dart';
+import 'package:flutter_hooks_lint_plugin/src/lint/cache.dart';
+import 'package:flutter_hooks_lint_plugin/src/lint/lint_error.dart';
 
 class Suppression {
-  static final _ignoreRegExp = RegExp(
-    '//[ ]*ignore:(.*)',
-    multiLine: true,
-  );
+  static final _ignoreRegExp = RegExp('//[ ]*ignore:(.*)', multiLine: true);
 
   static final _ignoreForFileRegExp = RegExp(
     '//[ ]*ignore_for_file:(.*)',
@@ -17,10 +15,14 @@ class Suppression {
     multiLine: true,
   );
 
-  Suppression({
-    required String content,
-    required this.lineInfo,
-  }) {
+  static final _cache = Cache<int, Suppression>(1);
+
+  static Suppression fromCache(String content) =>
+      _cache.doCache(content.hashCode, () => Suppression(content));
+
+  Suppression(String content) : lineInfo = LineInfo.fromContent(content) {
+    log.finer('Suppression ${content.hashCode}');
+
     for (final match in _ignoreForFileRegExp.allMatches(content)) {
       final ids = match.group(1);
 
@@ -58,7 +60,7 @@ class Suppression {
 
   bool isSuppressedLintError(LintError err) {
     final loc = lineInfo.getLocation(err.errNode.beginToken.charOffset);
-    return isSuppressed(err.code, loc.lineNumber, err.key);
+    return isSuppressed(err.code.name, loc.lineNumber, err.key.toString());
   }
 
   bool isSuppressed(String code, int line, [String? key]) {
