@@ -1,5 +1,8 @@
-analyzer:
-  plugins:
-    - flutter_hooks_lint_plugin
+plugins:
+  flutter_hooks_lint_plugin:
+    path: ../
+    diagnostics:
+      exhaustive_keys: true
+      nested_hooks: true
 
 flutter_hooks_lint_plugin:

@@ -1,71 +1,90 @@
+import 'package:analyzer/analysis_rule/analysis_rule.dart';
+import 'package:analyzer/analysis_rule/rule_context.dart';
+import 'package:analyzer/analysis_rule/rule_visitor_registry.dart';
 import 'package:analyzer/dart/ast/ast.dart';
 import 'package:analyzer/dart/ast/visitor.dart';
+import 'package:analyzer/error/error.dart';
+import 'package:flutter_hooks_lint_plugin/main.dart';
 import 'package:flutter_hooks_lint_plugin/src/lint/hook_widget_visitor.dart';
-import 'package:flutter_hooks_lint_plugin/src/lint/utils/lint_error.dart';
+import 'package:flutter_hooks_lint_plugin/src/lint/lint_error.dart';
+import 'package:flutter_hooks_lint_plugin/src/lint/supression.dart';
 import 'package:logging/logging.dart';
 
 final log = Logger('rules_of_hooks');
 
-void findRulesOfHooks(
-  CompilationUnit unit, {
-  required void Function(LintError) onReport,
-}) {
-  log.finer('findRulesOfHooks');
+const rulesOfHooksName = 'rules_of_hooks';
+const _nestedHooksCode = 'nested_hooks';
 
-  unit.visitChildren(
-    HookWidgetVisitor(
-      contextBuilder: () => _Context(),
-      onBuildBlock: (_Context context, node, _) {
-        node.visitChildren(
-          _HooksInvocationVisitor(
-            context: context,
-            onReport: onReport,
-          ),
-        );
-      },
-    ),
+class RulesOfHooksRule extends MultiAnalysisRule {
+  static const codeForNestedHooks = LintCode(
+    _nestedHooksCode,
+    'Avoid nested use of {0}. Hooks must be used in top-level scope of the build function.',
   );
+
+  RulesOfHooksRule(this.pluginContext)
+    : super(
+        name: rulesOfHooksName,
+        description: 'Rule for enforcing correct usage of hooks',
+      );
+
+  final FlutterHooksLintPluginContext pluginContext;
+
+  @override
+  List<DiagnosticCode> get diagnosticCodes => const [codeForNestedHooks];
+
+  @override
+  void registerNodeProcessors(
+    RuleVisitorRegistry registry,
+    RuleContext context,
+  ) {
+    log.finer('findRulesOfHooks');
+
+    registry.addClassDeclaration(
+      this,
+      HookBlockVisitor(
+        onBuildBlock: (node) {
+          node.visitChildren(
+            _HooksInvocationVisitor(
+              onReport: (error) {
+                final suppression = Suppression.fromCache(
+                  context.currentUnit!.content,
+                );
+                if (suppression.isSuppressedLintError(error)) return;
+                reportAtNode(
+                  error.errNode,
+                  diagnosticCode: error.code,
+                  arguments: [
+                    if (error.errNode is MethodInvocation)
+                      (error.errNode as MethodInvocation).methodName.toString(),
+                  ],
+                );
+              },
+            ),
+          );
+        },
+      ),
+    );
+  }
 }
-
-class LintErrorNestedHooks extends LintError {
-  static const _nestedHooksCode = 'nested_hooks';
-
-  LintErrorNestedHooks(this.hookName, AstNode errNode)
-      : super(
-          message:
-              'Avoid nested use of $hookName. Hooks must be used in top-level scope of the build function.',
-          code: _nestedHooksCode,
-          errNode: errNode,
-        );
-
-  final String hookName;
-}
-
-class _Context {}
 
 class _HooksInvocationVisitor extends RecursiveAstVisitor<void> {
-  _HooksInvocationVisitor({
-    required this.context,
-    required this.onReport,
-  });
+  _HooksInvocationVisitor({required this.onReport});
 
-  final _Context context;
   final void Function(LintError) onReport;
 
   @override
   void visitMethodInvocation(MethodInvocation node) {
     if (!node.methodName.name.startsWith('use')) {
-      node.visitChildren(_HooksInvocationVisitor(
-        context: context,
-        onReport: onReport,
-      ));
+      node.visitChildren(_HooksInvocationVisitor(onReport: onReport));
       return;
     }
 
     log.finer('_HooksInvocationVisitor: visit($node)');
 
     if (_findControlFlow(node.parent)) {
-      onReport(LintErrorNestedHooks(node.methodName.name, node));
+      onReport(
+        LintError(code: RulesOfHooksRule.codeForNestedHooks, errNode: node),
+      );
     }
   }
 
@@ -84,7 +103,9 @@ class _HooksInvocationVisitor extends RecursiveAstVisitor<void> {
     if (node is DoStatement) return true;
     if (node is FunctionDeclarationStatement) return true;
     if (node is MethodInvocation &&
-        (node.staticType?.isDartCoreIterable ?? false)) return true;
+        (node.staticType?.isDartCoreIterable ?? false)) {
+      return true;
+    }
     if (node is MethodInvocation && node.methodName.name == 'assert') {
       return true;
     }

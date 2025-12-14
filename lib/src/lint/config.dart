@@ -7,9 +7,9 @@ class Options {
   });
 
   factory Options.fromYaml(dynamic yaml) => Options(
-        analyzer: AnalyzerCommonOptions.fromYaml(yaml),
-        flutterHooksLintPlugin: FlutterHooksRulesPluginOptions.fromYaml(yaml),
-      );
+    analyzer: AnalyzerCommonOptions.fromYaml(yaml),
+    flutterHooksLintPlugin: FlutterHooksRulesPluginOptions.fromYaml(yaml),
+  );
 
   final AnalyzerCommonOptions analyzer;
   final FlutterHooksRulesPluginOptions flutterHooksLintPlugin;
@@ -18,9 +18,7 @@ class Options {
 class AnalyzerCommonOptions {
   static final String _rootKey = 'analyzer';
 
-  const AnalyzerCommonOptions({
-    this.exclude = const [],
-  });
+  const AnalyzerCommonOptions({this.exclude = const []});
 
   final List<String> exclude;
 
@@ -142,7 +140,9 @@ class ExhaustiveKeysOptions {
       other is ExhaustiveKeysOptions &&
       constantHooks.length == other.constantHooks.length &&
       constantHooks.asMap().entries.fold(
-          false, (prev, e) => prev | (e.value == other.constantHooks[e.key]));
+        false,
+        (prev, e) => prev | (e.value == other.constantHooks[e.key]),
+      );
 
   @override
   int get hashCode => constantHooks.fold(0, (prev, e) => prev ^ e.hashCode);

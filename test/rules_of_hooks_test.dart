@@ -1,31 +1,50 @@
+// ignore_for_file: non_constant_identifier_names
+
+import 'package:analyzer/error/error.dart';
+import 'package:analyzer/src/error/codes.dart';
+import 'package:analyzer_testing/analysis_rule/analysis_rule.dart';
+import 'package:flutter_hooks_lint_plugin/main.dart';
 import 'package:flutter_hooks_lint_plugin/src/lint/rules_of_hooks.dart';
-import 'package:flutter_hooks_lint_plugin/src/lint/utils/lint_error.dart';
-import 'package:test/test.dart';
+import 'package:test_reflective_loader/test_reflective_loader.dart';
 
-import 'matcher.dart';
 import 'utils.dart';
-
-Future<LintError?> _findError(String source) async {
-  final unit = await compileCode(source);
-
-  LintError? result;
-
-  findRulesOfHooks(
-    unit,
-    onReport: (err) {
-      result = err;
-    },
-  );
-
-  return result;
-}
 
 void main() {
   setUpLogging();
+  defineReflectiveSuite(() {
+    defineReflectiveTests(RulesOfHooksRuleTest);
+  });
+}
 
-  group('rules of hooks', () {
-    test('report use of useEffect inside an if-statement', () async {
-      final source = '''
+@reflectiveTest
+class RulesOfHooksRuleTest extends AnalysisRuleTest {
+  @override
+  final bool addFlutterPackageDep = false; // See: https://github.com/dart-lang/sdk/issues/61597
+
+  @override
+  List<DiagnosticCode> get ignoredDiagnosticCodes => [
+    CompileTimeErrorCode.undefinedMethod,
+    CompileTimeErrorCode.undefinedNamedParameter,
+    CompileTimeErrorCode.undefinedClass,
+    CompileTimeErrorCode.undefinedFunction,
+    CompileTimeErrorCode.argumentTypeNotAssignable,
+    CompileTimeErrorCode.extendsNonClass,
+    WarningCode.bodyMightCompleteNormallyNullable,
+    WarningCode.overrideOnNonOverridingMethod,
+    WarningCode.deadCode,
+    ...super.ignoredDiagnosticCodes,
+  ];
+
+  @override
+  void setUp() {
+    final pluginContext = FlutterHooksLintPluginContext();
+    rule = RulesOfHooksRule(pluginContext);
+    super.setUp();
+  }
+
+  void test_use_of_useEffect_inside_an_if_statement() async {
+    await assertDiagnostics(
+      '''
         class TestWidget extends HookWidget {
           const TestWidget({
             Key? key,
@@ -45,16 +64,14 @@ void main() {
             return Text('TestWidget');
           }
         }
-      ''';
+      ''',
+      [lint(297, 70, name: RulesOfHooksRule.codeForNestedHooks.name)],
+    );
+  }
 
-      final error = await _findError(source);
-
-      expect(error, LintErrorNestedHooksMatcher('useEffect'));
-    });
-
-    test('report use of useEffect inside a block omitted if-statement',
-        () async {
-      final source = '''
+  void test_use_of_useEffect_inside_a_block_omitted_if_statement() async {
+    await assertDiagnostics(
+      '''
         class TestWidget extends HookWidget {
           const TestWidget({
             Key? key,
@@ -70,15 +87,14 @@ void main() {
             return Text('TestWidget');
           }
         }
-      ''';
+      ''',
+      [lint(281, 40, name: RulesOfHooksRule.codeForNestedHooks.name)],
+    );
+  }
 
-      final error = await _findError(source);
-
-      expect(error, LintErrorNestedHooksMatcher('useEffect'));
-    });
-
-    test('report use of useEffect inside a switch-statement', () async {
-      final source = '''
+  void test_report_use_of_useEffect_inside_a_switch_statement() async {
+    await assertDiagnostics(
+      '''
         class TestWidget extends HookWidget {
           const TestWidget({
             Key? key,
@@ -100,15 +116,14 @@ void main() {
             return Text('TestWidget');
           }
         }
-      ''';
+      ''',
+      [lint(333, 74, name: RulesOfHooksRule.codeForNestedHooks.name)],
+    );
+  }
 
-      final error = await _findError(source);
-
-      expect(error, LintErrorNestedHooksMatcher('useEffect'));
-    });
-
-    test('report use of useEffect inside a for-statement', () async {
-      final source = '''
+  void test_report_use_of_useEffect_inside_a_for_statement() async {
+    await assertDiagnostics(
+      '''
         class TestWidget extends HookWidget {
           const TestWidget({
             Key? key,
@@ -128,15 +143,14 @@ void main() {
             return Text('TestWidget');
           }
         }
-      ''';
+      ''',
+      [lint(317, 62, name: RulesOfHooksRule.codeForNestedHooks.name)],
+    );
+  }
 
-      final error = await _findError(source);
-
-      expect(error, LintErrorNestedHooksMatcher('useEffect'));
-    });
-
-    test('report use of useEffect inside a while-statement', () async {
-      final source = '''
+  void test_report_use_of_useEffect_inside_a_while_statement() async {
+    await assertDiagnostics(
+      '''
         class TestWidget extends HookWidget {
           const TestWidget({
             Key? key,
@@ -149,22 +163,21 @@ void main() {
           Widget build(BuildContext context) {
             while (true) {
               useEffect(() {
-                print(p);
-              }, [p]);
+                print(param);
+              }, [param]);
             }
 
             return Text('TestWidget');
           }
         }
-      ''';
+      ''',
+      [lint(307, 70, name: RulesOfHooksRule.codeForNestedHooks.name)],
+    );
+  }
 
-      final error = await _findError(source);
-
-      expect(error, LintErrorNestedHooksMatcher('useEffect'));
-    });
-
-    test('report use of useEffect inside a do-statement', () async {
-      final source = '''
+  void test_report_use_of_useEffect_inside_a_do_statement() async {
+    await assertDiagnostics(
+      '''
         class TestWidget extends HookWidget {
           const TestWidget({
             Key? key,
@@ -177,22 +190,21 @@ void main() {
           Widget build(BuildContext context) {
             do {
               useEffect(() {
-                print(p);
-              }, [p]);
+                print(param);
+              }, [param]);
             } while (true);
 
             return Text('TestWidget');
           }
         }
-      ''';
+      ''',
+      [lint(297, 70, name: RulesOfHooksRule.codeForNestedHooks.name)],
+    );
+  }
 
-      final error = await _findError(source);
-
-      expect(error, LintErrorNestedHooksMatcher('useEffect'));
-    });
-
-    test('report use of useEffect with iterable', () async {
-      final source = '''
+  void test_report_use_of_useEffect_with_iterable() async {
+    await assertDiagnostics(
+      '''
         class TestWidget extends HookWidget {
           const TestWidget({
             Key? key,
@@ -210,15 +222,14 @@ void main() {
             return Text('TestWidget');
           }
         }
-      ''';
+      ''',
+      [lint(316, 58, name: RulesOfHooksRule.codeForNestedHooks.name)],
+    );
+  }
 
-      final error = await _findError(source);
-
-      expect(error, LintErrorNestedHooksMatcher('useEffect'));
-    });
-
-    test('report use of useEffect inside a function declaration', () async {
-      final source = '''
+  void test_report_use_of_useEffect_inside_a_function_declaration() async {
+    await assertDiagnostics(
+      '''
         class TestWidget extends HookWidget {
           const TestWidget({
             Key? key,
@@ -231,8 +242,8 @@ void main() {
           Widget build(BuildContext context) {
             void effect() {
               useEffect(() {
-                print(e);
-              }, [e]));
+                print(param);
+              }, [param]);
             }
 
             effect();
@@ -240,15 +251,13 @@ void main() {
             return Text('TestWidget');
           }
         }
-      ''';
+      ''',
+      [lint(309, 70, name: RulesOfHooksRule.codeForNestedHooks.name)],
+    );
+  }
 
-      final error = await _findError(source);
-
-      expect(error, LintErrorNestedHooksMatcher('useEffect'));
-    });
-
-    test('ignore top-level use of useEffect', () async {
-      final source = '''
+  void test_ignore_top_level_use_of_useEffect() async {
+    await assertNoDiagnostics('''
         class TestWidget extends HookWidget {
           const TestWidget({
             Key? key,
@@ -260,7 +269,7 @@ void main() {
           @override
           Widget build(BuildContext context) {
             if (param) {
-              print('not related code');
+              print('non related code');
             }
 
             useEffect(() {
@@ -270,11 +279,6 @@ void main() {
             return Text('TestWidget');
           }
         }
-      ''';
-
-      final error = await _findError(source);
-
-      expect(error, isNull);
-    });
-  });
+      ''');
+  }
 }
