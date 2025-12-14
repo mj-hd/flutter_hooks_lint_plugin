@@ -27,6 +27,3 @@ dev_dependencies:
   benchmark_harness: ^2.1.0
   analyzer_testing: any
   test_reflective_loader: any
-
-executables:
-  flutter_hooks_lint:
