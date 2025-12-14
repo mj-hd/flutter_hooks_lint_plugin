@@ -1,3 +1,9 @@
+## 0.7.0
+
+- support `analyzer_server_plugin`
+  - `// ignore: exhaustive_keys` has been split into `// ignore: exhaustive_keys.missing_key` and `// ignore: exhaustive_keys.unnecessary_key`
+  - `// ignore: nested_hooks` has been `// ignore: rules_of_hooks.nested_hooks`
+
 ## 0.6.1
 
 - bump analyzer to 5.2.0
