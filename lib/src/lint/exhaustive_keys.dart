@@ -22,9 +22,9 @@ final log = Logger('exhaustive_keys');
 
 const exhaustiveKeysName = 'exhaustive_keys';
 
-const _missingKeyCode = 'exhaustive_keys.missing_key';
-const _unnecessaryKeyCode = 'exhaustive_keys.unnecessary_key';
-const _functionKeyCode = 'exhaustive_keys.function_key';
+const _missingKeyCode = 'missing_key';
+const _unnecessaryKeyCode = 'unnecessary_key';
+const _functionKeyCode = 'function_key';
 
 class ExhaustiveKeysRule extends MultiAnalysisRule {
   static const codeForMissingKey = LintCode(

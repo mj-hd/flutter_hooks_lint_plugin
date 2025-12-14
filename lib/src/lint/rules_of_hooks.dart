@@ -12,10 +12,12 @@ import 'package:logging/logging.dart';
 
 final log = Logger('rules_of_hooks');
 
+const rulesOfHooksName = 'rules_of_hooks';
+const _nestedHooksCode = 'nested_hooks';
+
 class RulesOfHooksRule extends MultiAnalysisRule {
-  static const rulesOfHooksName = 'nested_hooks';
   static const codeForNestedHooks = LintCode(
-    rulesOfHooksName,
+    _nestedHooksCode,
     'Avoid nested use of {0}. Hooks must be used in top-level scope of the build function.',
   );
 

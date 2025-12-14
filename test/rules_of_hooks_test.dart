@@ -42,9 +42,6 @@ class RulesOfHooksRuleTest extends AnalysisRuleTest {
     super.setUp();
   }
 
-  @override
-  String get analysisRule => RulesOfHooksRule.rulesOfHooksName;
-
   void test_use_of_useEffect_inside_an_if_statement() async {
     await assertDiagnostics(
       '''
