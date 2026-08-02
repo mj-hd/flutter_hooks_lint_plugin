@@ -1,8 +1,8 @@
 import 'package:analysis_server_plugin/edit/dart/correction_producer.dart';
 import 'package:analysis_server_plugin/plugin.dart';
 import 'package:analysis_server_plugin/registry.dart';
-import 'package:analyzer/src/analysis_options/analysis_options_provider.dart';
 import 'package:analyzer/workspace/workspace.dart';
+import 'package:flutter_hooks_lint_plugin/src/analysis_options_provider.dart';
 import 'package:flutter_hooks_lint_plugin/src/lint/config.dart';
 import 'package:flutter_hooks_lint_plugin/src/lint/exhaustive_keys.dart';
 import 'package:flutter_hooks_lint_plugin/src/lint/rules_of_hooks.dart';

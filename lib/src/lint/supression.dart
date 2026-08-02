@@ -60,7 +60,11 @@ class Suppression {
 
   bool isSuppressedLintError(LintError err) {
     final loc = lineInfo.getLocation(err.errNode.beginToken.charOffset);
-    return isSuppressed(err.code.name, loc.lineNumber, err.key.toString());
+    return isSuppressed(
+      err.code.lowerCaseName,
+      loc.lineNumber,
+      err.key.toString(),
+    );
   }
 
   bool isSuppressed(String code, int line, [String? key]) {

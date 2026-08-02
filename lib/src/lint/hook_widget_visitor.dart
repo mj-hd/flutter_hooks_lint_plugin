@@ -61,7 +61,7 @@ class HookBlockVisitor extends SimpleAstVisitor<void> {
   }
 }
 
-class _BuildVisitor extends SimpleAstVisitor<void> {
+class _BuildVisitor extends RecursiveAstVisitor<void> {
   _BuildVisitor(this.visitHandler);
 
   final void Function(Block node) visitHandler;

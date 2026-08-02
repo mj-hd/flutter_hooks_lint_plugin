@@ -1,7 +1,7 @@
 import 'dart:io';
 
-import 'package:analyzer/utilities/package_config_file_builder.dart';
 import 'package:analyzer_testing/analysis_rule/analysis_rule.dart';
+import 'package:analyzer_testing/package_config_file_builder.dart';
 import 'package:logging/logging.dart';
 
 void setUpLogging() {
@@ -31,8 +31,10 @@ extension AnalysisRuleTestExt on AnalysisRuleTest {
     const flutterHooksPath = '/packages/flutter_hooks';
     newFile('$flutterHooksPath/lib/flutter_hooks.dart', _flutterHooksStub);
     writeTestPackageConfig(
-      PackageConfigFileBuilder()
-        ..add(name: 'flutter_hooks', rootPath: convertPath(flutterHooksPath)),
+      PackageConfigFileBuilder()..add(
+        name: 'flutter_hooks',
+        rootFolder: resourceProvider.getFolder(convertPath(flutterHooksPath)),
+      ),
     );
   }
 }

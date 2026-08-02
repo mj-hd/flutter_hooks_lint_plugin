@@ -1,7 +1,7 @@
 // ignore_for_file: non_constant_identifier_names
 
 import 'package:analyzer/error/error.dart';
-import 'package:analyzer/src/error/codes.dart';
+import 'package:analyzer/src/diagnostic/diagnostic.dart' as diag;
 import 'package:analyzer_testing/analysis_rule/analysis_rule.dart';
 import 'package:flutter_hooks_lint_plugin/main.dart';
 import 'package:flutter_hooks_lint_plugin/src/lint/rules_of_hooks.dart';
@@ -23,15 +23,15 @@ class RulesOfHooksRuleTest extends AnalysisRuleTest {
 
   @override
   List<DiagnosticCode> get ignoredDiagnosticCodes => [
-    CompileTimeErrorCode.undefinedMethod,
-    CompileTimeErrorCode.undefinedNamedParameter,
-    CompileTimeErrorCode.undefinedClass,
-    CompileTimeErrorCode.undefinedFunction,
-    CompileTimeErrorCode.argumentTypeNotAssignable,
-    CompileTimeErrorCode.extendsNonClass,
-    WarningCode.bodyMightCompleteNormallyNullable,
-    WarningCode.overrideOnNonOverridingMethod,
-    WarningCode.deadCode,
+    diag.undefinedMethod,
+    diag.undefinedNamedParameter,
+    diag.undefinedClass,
+    diag.undefinedFunction,
+    diag.argumentTypeNotAssignable,
+    diag.extendsNonClass,
+    diag.bodyMightCompleteNormallyNullable,
+    diag.overrideOnNonOverridingMethod,
+    diag.deadCode,
     ...super.ignoredDiagnosticCodes,
   ];
 
@@ -65,7 +65,7 @@ class RulesOfHooksRuleTest extends AnalysisRuleTest {
           }
         }
       ''',
-      [lint(297, 70, name: RulesOfHooksRule.codeForNestedHooks.name)],
+      [lint(297, 70, name: RulesOfHooksRule.codeForNestedHooks.lowerCaseName)],
     );
   }
 
@@ -88,7 +88,7 @@ class RulesOfHooksRuleTest extends AnalysisRuleTest {
           }
         }
       ''',
-      [lint(281, 40, name: RulesOfHooksRule.codeForNestedHooks.name)],
+      [lint(281, 40, name: RulesOfHooksRule.codeForNestedHooks.lowerCaseName)],
     );
   }
 
@@ -117,7 +117,7 @@ class RulesOfHooksRuleTest extends AnalysisRuleTest {
           }
         }
       ''',
-      [lint(333, 74, name: RulesOfHooksRule.codeForNestedHooks.name)],
+      [lint(333, 74, name: RulesOfHooksRule.codeForNestedHooks.lowerCaseName)],
     );
   }
 
@@ -144,7 +144,7 @@ class RulesOfHooksRuleTest extends AnalysisRuleTest {
           }
         }
       ''',
-      [lint(317, 62, name: RulesOfHooksRule.codeForNestedHooks.name)],
+      [lint(317, 62, name: RulesOfHooksRule.codeForNestedHooks.lowerCaseName)],
     );
   }
 
@@ -171,7 +171,7 @@ class RulesOfHooksRuleTest extends AnalysisRuleTest {
           }
         }
       ''',
-      [lint(307, 70, name: RulesOfHooksRule.codeForNestedHooks.name)],
+      [lint(307, 70, name: RulesOfHooksRule.codeForNestedHooks.lowerCaseName)],
     );
   }
 
@@ -198,7 +198,7 @@ class RulesOfHooksRuleTest extends AnalysisRuleTest {
           }
         }
       ''',
-      [lint(297, 70, name: RulesOfHooksRule.codeForNestedHooks.name)],
+      [lint(297, 70, name: RulesOfHooksRule.codeForNestedHooks.lowerCaseName)],
     );
   }
 
@@ -223,7 +223,7 @@ class RulesOfHooksRuleTest extends AnalysisRuleTest {
           }
         }
       ''',
-      [lint(316, 58, name: RulesOfHooksRule.codeForNestedHooks.name)],
+      [lint(316, 58, name: RulesOfHooksRule.codeForNestedHooks.lowerCaseName)],
     );
   }
 
@@ -252,7 +252,7 @@ class RulesOfHooksRuleTest extends AnalysisRuleTest {
           }
         }
       ''',
-      [lint(309, 70, name: RulesOfHooksRule.codeForNestedHooks.name)],
+      [lint(309, 70, name: RulesOfHooksRule.codeForNestedHooks.lowerCaseName)],
     );
   }
 

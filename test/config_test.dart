@@ -19,13 +19,7 @@ void main() {
       expect(
         FlutterHooksRulesPluginOptions.fromYaml(yaml),
         FlutterHooksRulesPluginOptions(
-          exhaustiveKeys: ExhaustiveKeysOptions(
-            constantHooks: [
-              'A',
-              'B',
-              'C',
-            ],
-          ),
+          exhaustiveKeys: ExhaustiveKeysOptions(constantHooks: ['A', 'B', 'C']),
         ),
       );
     });
@@ -43,13 +37,7 @@ void main() {
 
       expect(
         AnalyzerCommonOptions.fromYaml(yaml),
-        AnalyzerCommonOptions(
-          exclude: [
-            'first',
-            'second*',
-            'third/*.dart',
-          ],
-        ),
+        AnalyzerCommonOptions(exclude: ['first', 'second*', 'third/*.dart']),
       );
     });
   });
