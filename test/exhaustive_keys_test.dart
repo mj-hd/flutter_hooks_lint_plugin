@@ -1,7 +1,7 @@
 // ignore_for_file: non_constant_identifier_names
 
 import 'package:analyzer/error/error.dart';
-import 'package:analyzer/src/error/codes.dart';
+import 'package:analyzer/src/diagnostic/diagnostic.dart' as diag;
 import 'package:analyzer_testing/analysis_rule/analysis_rule.dart';
 import 'package:flutter_hooks_lint_plugin/main.dart';
 import 'package:flutter_hooks_lint_plugin/src/lint/exhaustive_keys.dart';
@@ -23,14 +23,14 @@ class ExhaustiveKeysRuleTest extends AnalysisRuleTest {
 
   @override
   List<DiagnosticCode> get ignoredDiagnosticCodes => [
-    CompileTimeErrorCode.undefinedMethod,
-    CompileTimeErrorCode.undefinedNamedParameter,
-    CompileTimeErrorCode.undefinedClass,
-    CompileTimeErrorCode.undefinedFunction,
-    CompileTimeErrorCode.argumentTypeNotAssignable,
-    CompileTimeErrorCode.extendsNonClass,
-    WarningCode.bodyMightCompleteNormallyNullable,
-    WarningCode.overrideOnNonOverridingMethod,
+    diag.undefinedMethod,
+    diag.undefinedNamedParameter,
+    diag.undefinedClass,
+    diag.undefinedFunction,
+    diag.argumentTypeNotAssignable,
+    diag.extendsNonClass,
+    diag.bodyMightCompleteNormallyNullable,
+    diag.overrideOnNonOverridingMethod,
     ...super.ignoredDiagnosticCodes,
   ];
 
@@ -66,7 +66,7 @@ class ExhaustiveKeysRuleTest extends AnalysisRuleTest {
           }
         }
       ''',
-      [lint(384, 2, name: ExhaustiveKeysRule.codeForMissingKey.name)],
+      [lint(384, 2, name: ExhaustiveKeysRule.codeForMissingKey.lowerCaseName)],
     );
   }
 
@@ -94,7 +94,7 @@ class ExhaustiveKeysRuleTest extends AnalysisRuleTest {
           }
         }
       ''',
-      [lint(388, 2, name: ExhaustiveKeysRule.codeForMissingKey.name)],
+      [lint(388, 2, name: ExhaustiveKeysRule.codeForMissingKey.lowerCaseName)],
     );
   }
 
@@ -122,7 +122,7 @@ class ExhaustiveKeysRuleTest extends AnalysisRuleTest {
           }
         }
       ''',
-      [lint(389, 2, name: ExhaustiveKeysRule.codeForMissingKey.name)],
+      [lint(389, 2, name: ExhaustiveKeysRule.codeForMissingKey.lowerCaseName)],
     );
   }
 
@@ -184,15 +184,15 @@ class ExhaustiveKeysRuleTest extends AnalysisRuleTest {
         }
       ''',
       [
-        lint(961, 2, name: ExhaustiveKeysRule.codeForMissingKey.name),
-        lint(961, 2, name: ExhaustiveKeysRule.codeForMissingKey.name),
-        lint(961, 2, name: ExhaustiveKeysRule.codeForMissingKey.name),
-        lint(961, 2, name: ExhaustiveKeysRule.codeForMissingKey.name),
-        lint(961, 2, name: ExhaustiveKeysRule.codeForMissingKey.name),
-        lint(961, 2, name: ExhaustiveKeysRule.codeForMissingKey.name),
-        lint(961, 2, name: ExhaustiveKeysRule.codeForMissingKey.name),
-        lint(961, 2, name: ExhaustiveKeysRule.codeForMissingKey.name),
-        lint(961, 2, name: ExhaustiveKeysRule.codeForMissingKey.name),
+        lint(961, 2, name: ExhaustiveKeysRule.codeForMissingKey.lowerCaseName),
+        lint(961, 2, name: ExhaustiveKeysRule.codeForMissingKey.lowerCaseName),
+        lint(961, 2, name: ExhaustiveKeysRule.codeForMissingKey.lowerCaseName),
+        lint(961, 2, name: ExhaustiveKeysRule.codeForMissingKey.lowerCaseName),
+        lint(961, 2, name: ExhaustiveKeysRule.codeForMissingKey.lowerCaseName),
+        lint(961, 2, name: ExhaustiveKeysRule.codeForMissingKey.lowerCaseName),
+        lint(961, 2, name: ExhaustiveKeysRule.codeForMissingKey.lowerCaseName),
+        lint(961, 2, name: ExhaustiveKeysRule.codeForMissingKey.lowerCaseName),
+        lint(961, 2, name: ExhaustiveKeysRule.codeForMissingKey.lowerCaseName),
       ],
     );
   }
@@ -284,7 +284,7 @@ class ExhaustiveKeysRuleTest extends AnalysisRuleTest {
           }
         }
       ''',
-      [lint(399, 2, name: ExhaustiveKeysRule.codeForMissingKey.name)],
+      [lint(399, 2, name: ExhaustiveKeysRule.codeForMissingKey.lowerCaseName)],
     );
   }
 
@@ -312,8 +312,8 @@ class ExhaustiveKeysRuleTest extends AnalysisRuleTest {
         }
       ''',
       [
-        lint(509, 2, name: ExhaustiveKeysRule.codeForMissingKey.name),
-        lint(509, 2, name: ExhaustiveKeysRule.codeForMissingKey.name),
+        lint(509, 2, name: ExhaustiveKeysRule.codeForMissingKey.lowerCaseName),
+        lint(509, 2, name: ExhaustiveKeysRule.codeForMissingKey.lowerCaseName),
       ],
     );
   }
@@ -348,7 +348,7 @@ class ExhaustiveKeysRuleTest extends AnalysisRuleTest {
           }
         }
       ''',
-      [lint(644, 2, name: ExhaustiveKeysRule.codeForMissingKey.name)],
+      [lint(644, 2, name: ExhaustiveKeysRule.codeForMissingKey.lowerCaseName)],
     );
   }
 
@@ -375,7 +375,7 @@ class ExhaustiveKeysRuleTest extends AnalysisRuleTest {
           }
         }
       ''',
-      [lint(394, 2, name: ExhaustiveKeysRule.codeForMissingKey.name)],
+      [lint(394, 2, name: ExhaustiveKeysRule.codeForMissingKey.lowerCaseName)],
     );
   }
 
@@ -470,7 +470,7 @@ class ExhaustiveKeysRuleTest extends AnalysisRuleTest {
           }
         }
       ''',
-      [lint(298, 2, name: ExhaustiveKeysRule.codeForMissingKey.name)],
+      [lint(298, 2, name: ExhaustiveKeysRule.codeForMissingKey.lowerCaseName)],
     );
   }
 
@@ -554,7 +554,7 @@ class ExhaustiveKeysRuleTest extends AnalysisRuleTest {
           }
         }
       ''',
-      [lint(341, 11, name: ExhaustiveKeysRule.codeForMissingKey.name)],
+      [lint(341, 11, name: ExhaustiveKeysRule.codeForMissingKey.lowerCaseName)],
     );
   }
 
@@ -583,7 +583,7 @@ class ExhaustiveKeysRuleTest extends AnalysisRuleTest {
           }
         }
       ''',
-      [lint(341, 11, name: ExhaustiveKeysRule.codeForMissingKey.name)],
+      [lint(341, 11, name: ExhaustiveKeysRule.codeForMissingKey.lowerCaseName)],
     );
   }
 
@@ -612,7 +612,7 @@ class ExhaustiveKeysRuleTest extends AnalysisRuleTest {
           }
         }
       ''',
-      [lint(455, 6, name: ExhaustiveKeysRule.codeForMissingKey.name)],
+      [lint(455, 6, name: ExhaustiveKeysRule.codeForMissingKey.lowerCaseName)],
     );
   }
 
@@ -643,7 +643,7 @@ class ExhaustiveKeysRuleTest extends AnalysisRuleTest {
           }
         }
       ''',
-      [lint(455, 35, name: ExhaustiveKeysRule.codeForMissingKey.name)],
+      [lint(455, 35, name: ExhaustiveKeysRule.codeForMissingKey.lowerCaseName)],
     );
   }
 
@@ -667,7 +667,13 @@ class ExhaustiveKeysRuleTest extends AnalysisRuleTest {
           }
         }
       ''',
-      [lint(389, 5, name: ExhaustiveKeysRule.codeForUnnecessaryKey.name)],
+      [
+        lint(
+          389,
+          5,
+          name: ExhaustiveKeysRule.codeForUnnecessaryKey.lowerCaseName,
+        ),
+      ],
     );
   }
 
@@ -689,7 +695,13 @@ class ExhaustiveKeysRuleTest extends AnalysisRuleTest {
           }
         }
       ''',
-      [lint(283, 7, name: ExhaustiveKeysRule.codeForUnnecessaryKey.name)],
+      [
+        lint(
+          283,
+          7,
+          name: ExhaustiveKeysRule.codeForUnnecessaryKey.lowerCaseName,
+        ),
+      ],
     );
   }
 
@@ -845,7 +857,13 @@ class ExhaustiveKeysRuleTest extends AnalysisRuleTest {
           }
         }
       ''',
-      [lint(400, 10, name: ExhaustiveKeysRule.codeForFunctionKey.name)],
+      [
+        lint(
+          400,
+          10,
+          name: ExhaustiveKeysRule.codeForFunctionKey.lowerCaseName,
+        ),
+      ],
     );
   }
 }

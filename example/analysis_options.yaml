@@ -3,6 +3,6 @@ plugins:
     path: ../
     diagnostics:
       exhaustive_keys: true
-      nested_hooks: true
+      rules_of_hooks: true
 
 flutter_hooks_lint_plugin:

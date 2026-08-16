@@ -289,14 +289,14 @@ class _LocalVariableVisitor extends SimpleAstVisitor<void> {
       case 'useTabController':
       case 'useTransformationController':
         final keys = initializer.argumentList.arguments
-            .whereType<NamedExpression>()
-            .where((arg) => arg.name.label.name == 'keys');
+            .whereType<NamedArgument>()
+            .where((arg) => arg.name.lexeme == 'keys');
 
         if (keys.isEmpty) return;
 
         final key = keys.first;
 
-        final value = key.expression;
+        final value = key.argumentExpression;
 
         if (value is ListLiteral && value.elements.isEmpty) {
           return;

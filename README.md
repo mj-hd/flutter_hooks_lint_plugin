@@ -31,21 +31,15 @@ if (flag) {
 
 ## Installation
 
-Add `flutter_hooks_lint_plugin` dependency to your `pubspec.yaml`:
-
-```yaml
-dev_dependencies:
-  flutter_hooks_lint_plugin: ^0.7.0
-```
-
-Add `flutter_hooks_lint_plugin` plugin directive to your `analyzer_options.yaml`:
+Add the `flutter_hooks_lint_plugin` plugin directive to your `analysis_options.yaml`:
 
 ```yaml
 plugins:
   flutter_hooks_lint_plugin:
+    version: ^0.8.0
     diagnostics:
       exhaustive_keys: true
-      nested_hooks: true
+      rules_of_hooks: true
 ```
 
 Then, run `flutter pub get` and restart your IDE/Editor.
@@ -73,8 +67,8 @@ flutter_hooks_lint_plugin:
 
 There are several ways to suppress lints:
 
-1. add `// ignore_for_file: exhaustive_keys.missing_key, rules_of_hooks.nested_hooks` to suppress lints in the entire file
-1. add `// ignore: exhaustive_keys.missing_key, rules_of_hooks.nested_hooks` to suppress lints at the next or current line
+1. add `// ignore_for_file: flutter_hooks_lint_plugin/missing_key, flutter_hooks_lint_plugin/nested_hooks` to suppress lints in the entire file
+1. add `// ignore: flutter_hooks_lint_plugin/missing_key, flutter_hooks_lint_plugin/nested_hooks` to suppress lints at the next or current line
 1. add `// ignore_keys: foo, bar` to suppress lints for the specific keys at the next or current line
 
 ## Contribution
