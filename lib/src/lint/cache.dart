@@ -7,7 +7,7 @@ class Cache<K, V> {
 
   final LinkedHashMap<K, V> _internal = LinkedHashMap<K, V>();
 
-  void remove(K key) => _internal.remove;
+  void remove(K key) => _internal.remove(key);
 
   V? operator [](K key) {
     final val = _internal[key];
@@ -24,7 +24,7 @@ class Cache<K, V> {
     _internal[key] = val;
 
     if (_internal.length > limit) {
-      _internal.remove(_internal.values.first);
+      _internal.remove(_internal.keys.first);
     }
   }
 
