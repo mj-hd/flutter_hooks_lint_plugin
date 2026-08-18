@@ -2,61 +2,22 @@ import 'package:yaml/yaml.dart';
 
 class Options {
   const Options({
-    this.analyzer = const AnalyzerCommonOptions(),
     this.flutterHooksLintPlugin = const FlutterHooksRulesPluginOptions(),
   });
 
   factory Options.fromYaml(dynamic yaml) => Options(
-    analyzer: AnalyzerCommonOptions.fromYaml(yaml),
     flutterHooksLintPlugin: FlutterHooksRulesPluginOptions.fromYaml(yaml),
   );
 
-  final AnalyzerCommonOptions analyzer;
   final FlutterHooksRulesPluginOptions flutterHooksLintPlugin;
-}
 
-class AnalyzerCommonOptions {
-  static final String _rootKey = 'analyzer';
-
-  const AnalyzerCommonOptions({this.exclude = const []});
-
-  final List<String> exclude;
-
-  factory AnalyzerCommonOptions.fromYaml(dynamic yaml) {
-    if (yaml is! YamlMap) {
-      return AnalyzerCommonOptions();
-    }
-
-    final map = yaml[_rootKey];
-
-    if (map is! YamlMap) {
-      return AnalyzerCommonOptions();
-    }
-
-    final exclude = map['exclude'];
-
-    if (exclude is! YamlList) {
-      return AnalyzerCommonOptions();
-    }
-
-    return AnalyzerCommonOptions(
-      exclude: exclude.value.whereType<String>().toList(),
+  Options applyYaml(Options other) {
+    return Options(
+      flutterHooksLintPlugin: flutterHooksLintPlugin.applyYaml(
+        other.flutterHooksLintPlugin,
+      ),
     );
   }
-
-  @override
-  String toString() {
-    return '{ exclude: $exclude }';
-  }
-
-  @override
-  bool operator ==(Object other) =>
-      other is AnalyzerCommonOptions &&
-      exclude.length == other.exclude.length &&
-      exclude.every((e) => other.exclude.contains(e));
-
-  @override
-  int get hashCode => exclude.fold(0, (acc, e) => acc ^ e.hashCode);
 }
 
 class FlutterHooksRulesPluginOptions {
@@ -72,7 +33,6 @@ class FlutterHooksRulesPluginOptions {
     }
 
     final map = yaml[_rootKey];
-
     if (map is! YamlMap) {
       return FlutterHooksRulesPluginOptions();
     }
@@ -96,21 +56,29 @@ class FlutterHooksRulesPluginOptions {
 
   @override
   int get hashCode => exhaustiveKeys.hashCode;
+
+  FlutterHooksRulesPluginOptions applyYaml(
+    FlutterHooksRulesPluginOptions other,
+  ) {
+    return FlutterHooksRulesPluginOptions(
+      exhaustiveKeys: exhaustiveKeys.applyYaml(other.exhaustiveKeys),
+    );
+  }
 }
 
 class ExhaustiveKeysOptions {
   static final String _rootKey = 'exhaustive_keys';
 
-  const ExhaustiveKeysOptions({
-    this.constantHooks = const [
-      'useRef',
-      'useIsMounted',
-      'useFocusNode',
-      'useContext',
-    ],
-  });
+  static const defaultConstantHooks = [
+    'useRef',
+    'useIsMounted',
+    'useFocusNode',
+    'useContext',
+  ];
 
-  final List<String> constantHooks;
+  const ExhaustiveKeysOptions({this.constantHooks});
+
+  final List<String>? constantHooks;
 
   factory ExhaustiveKeysOptions.fromYaml(dynamic yaml) {
     final map = yaml[_rootKey];
@@ -130,6 +98,9 @@ class ExhaustiveKeysOptions {
     );
   }
 
+  List<String> get effectiveConstantHooks =>
+      constantHooks ?? defaultConstantHooks;
+
   @override
   String toString() {
     return '{ constantHooks: $constantHooks }';
@@ -138,12 +109,20 @@ class ExhaustiveKeysOptions {
   @override
   bool operator ==(Object other) =>
       other is ExhaustiveKeysOptions &&
-      constantHooks.length == other.constantHooks.length &&
-      constantHooks.asMap().entries.fold(
-        false,
-        (prev, e) => prev | (e.value == other.constantHooks[e.key]),
-      );
+      constantHooks?.length == other.constantHooks?.length &&
+      (constantHooks == null ||
+          constantHooks!.asMap().entries.fold(
+            false,
+            (prev, e) => prev | (e.value == other.constantHooks![e.key]),
+          ));
 
   @override
-  int get hashCode => constantHooks.fold(0, (prev, e) => prev ^ e.hashCode);
+  int get hashCode =>
+      constantHooks?.fold(0, (prev, e) => prev! ^ e.hashCode) ?? 0;
+
+  ExhaustiveKeysOptions applyYaml(ExhaustiveKeysOptions other) {
+    return ExhaustiveKeysOptions(
+      constantHooks: other.constantHooks ?? constantHooks,
+    );
+  }
 }

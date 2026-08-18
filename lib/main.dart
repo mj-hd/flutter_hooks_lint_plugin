@@ -1,8 +1,9 @@
 import 'package:analysis_server_plugin/edit/dart/correction_producer.dart';
 import 'package:analysis_server_plugin/plugin.dart';
 import 'package:analysis_server_plugin/registry.dart';
+import 'package:analyzer/file_system/file_system.dart';
 import 'package:analyzer/workspace/workspace.dart';
-import 'package:flutter_hooks_lint_plugin/src/analysis_options_provider.dart';
+import 'package:flutter_hooks_lint_plugin/src/lint/analysis_options_loader.dart';
 import 'package:flutter_hooks_lint_plugin/src/lint/config.dart';
 import 'package:flutter_hooks_lint_plugin/src/lint/exhaustive_keys.dart';
 import 'package:flutter_hooks_lint_plugin/src/lint/rules_of_hooks.dart';
@@ -54,18 +55,9 @@ class FlutterHooksLintPlugin extends Plugin {
 class FlutterHooksLintPluginContext {
   FlutterHooksLintPluginContext();
 
-  final _optionsForContextMap = {};
+  final _analysisOptionsLoader = AnalysisOptionsLoader();
 
-  Options optionsForPackage(WorkspacePackage? package) {
-    if (package == null) return const Options();
-
-    final key = package.root.path;
-    if (_optionsForContextMap[key] == null) {
-      final provider = AnalysisOptionsProvider();
-      final optionsYaml = provider.getOptions(package.root);
-      _optionsForContextMap[key] = Options.fromYaml(optionsYaml);
-    }
-
-    return _optionsForContextMap[key];
+  Options optionsForFile(WorkspacePackage? package, File file) {
+    return _analysisOptionsLoader.load(package, file);
   }
 }

@@ -9,6 +9,7 @@ import 'package:analyzer/dart/ast/ast.dart';
 import 'package:analyzer/dart/ast/visitor.dart';
 import 'package:analyzer/dart/element/element.dart';
 import 'package:analyzer/error/error.dart';
+import 'package:analyzer/workspace/workspace.dart';
 import 'package:analyzer_plugin/utilities/change_builder/change_builder_core.dart';
 import 'package:analyzer_plugin/utilities/fixes/fixes.dart';
 import 'package:flutter_hooks_lint_plugin/main.dart';
@@ -61,7 +62,7 @@ class ExhaustiveKeysRule extends MultiAnalysisRule {
     RuleContext context,
   ) {
     final options = pluginContext
-        .optionsForPackage(context.package)
+        .optionsForFile(context.package, context.definingUnit.file)
         .flutterHooksLintPlugin
         .exhaustiveKeys;
 
@@ -117,11 +118,12 @@ class _ExhaustiveKeysCommonFix extends ResolvedCorrectionProducer {
 
   @override
   Future<void> compute(ChangeBuilder builder) async {
+    final package =
+        sessionHelper.session.analysisContext.contextRoot.workspace
+                .findPackageFor(file)
+            as WorkspacePackage?;
     final options = pluginContext
-        .optionsForPackage(
-          sessionHelper.session.analysisContext.contextRoot.workspace
-              .findPackageFor(file),
-        )
+        .optionsForFile(package, unitResult.file)
         .flutterHooksLintPlugin
         .exhaustiveKeys;
 
@@ -205,7 +207,7 @@ class _ExhaustiveKeysValidator {
 
     final localVariableVisitor = _LocalVariableVisitor(
       bucket: bucket,
-      constantHooks: options.constantHooks,
+      constantHooks: options.effectiveConstantHooks,
     );
 
     node.visitChildren(localVariableVisitor);
