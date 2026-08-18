@@ -1,3 +1,10 @@
+## 0.8.0
+
+- bump analyzer 14 (thanks to @keigomichi -san)
+  - https://github.com/mj-hd/flutter_hooks_lint_plugin/pull/37
+- updated installation instructions
+- bump the minimum Dart SDK version to 3.11 or higher
+
 ## 0.7.0
 
 - support `analyzer_server_plugin`
