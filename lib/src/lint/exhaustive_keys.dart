@@ -30,15 +30,15 @@ const _functionKeyCode = 'function_key';
 class ExhaustiveKeysRule extends MultiAnalysisRule {
   static const codeForMissingKey = LintCode(
     _missingKeyCode,
-    "Missing key '{0}' ({1}) found. Add the key, or ignore this line.",
+    "Missing key '{0}'{1} found. Add the key, or ignore this line.",
   );
   static const codeForUnnecessaryKey = LintCode(
     _unnecessaryKeyCode,
-    "Unnecessary key '{0}' ({1}) found. Remove the key, or ignore this line.",
+    "Unnecessary key '{0}'{1} found. Remove the key, or ignore this line.",
   );
   static const codeForFunctionKey = LintCode(
     _functionKeyCode,
-    "'{0}' ({1}) changes on every re-build. Move its definition inside the hook, or wrap with useCallback.",
+    "'{0}'{1} changes on every re-build. Move its definition inside the hook, or wrap with useCallback.",
   );
 
   ExhaustiveKeysRule(this.pluginContext)
@@ -78,9 +78,13 @@ class ExhaustiveKeysRule extends MultiAnalysisRule {
           error.errNode,
           diagnosticCode: error.code,
           arguments: [
-            if (error.key != null) error.key!.toString(),
-            if (error.key?.kind.toReadableString() != null)
-              error.key!.kind.toReadableString()!,
+            error.key?.toString() ?? '',
+            // Always passed, so that the number of arguments matches the
+            // message's placeholders.
+            if (error.key?.kind.toReadableString() case final kind?)
+              ' ($kind)'
+            else
+              '',
           ],
         );
       },
