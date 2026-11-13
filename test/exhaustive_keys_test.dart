@@ -677,6 +677,32 @@ class ExhaustiveKeysRuleTest extends AnalysisRuleTest {
     );
   }
 
+  void test_unnecessary_report_unclassified_key() async {
+    await assertDiagnostics(
+      '''
+        import 'package:flutter_hooks/flutter_hooks.dart';
+
+        class TestWidget extends HookWidget {
+          @override
+          Widget build(BuildContext context) {
+            final dep = useMemoized(() => 1);
+            useEffect(() {
+              print('Hello');
+            }, [dep]);
+            return Text('TestWidget');
+          }
+        }
+      ''',
+      [
+        lint(
+          291,
+          5,
+          name: ExhaustiveKeysRule.codeForUnnecessaryKey.lowerCaseName,
+        ),
+      ],
+    );
+  }
+
   void test_unnecessary_report_useState_notifier_reference() async {
     await assertDiagnostics(
       '''
